@@ -61,6 +61,8 @@ struct KeyboardState {
     s: bool,
     a: bool,
     d: bool,
+    i: bool,
+    o: bool,
 }
 
 // ============================================================
@@ -137,7 +139,7 @@ impl App {
 
             position: [0.0, 0.0],
 
-            speed: 0.01,
+            speed: 0.001,
         }
     }
 
@@ -161,6 +163,14 @@ impl App {
 
             KeyCode::KeyD => {
                 self.keyboard.d = pressed;
+            }
+
+            KeyCode::KeyI => {
+                self.keyboard.i = pressed;
+            }
+
+            KeyCode::KeyO => {
+                self.keyboard.o = pressed;
             }
 
             _ => {}
@@ -202,6 +212,22 @@ impl App {
 
         if self.keyboard.d {
             self.position[0] += self.speed;
+        }
+
+        // ----------------------------------------------------
+        // INCREASE SPEED
+        // ----------------------------------------------------
+
+        if self.keyboard.i {
+            self.speed += 0.001;
+        }
+
+        // ----------------------------------------------------
+        // DECREASE SPEED
+        // ----------------------------------------------------
+
+        if self.keyboard.o {
+            self.speed -= 0.001;
         }
 
         // ----------------------------------------------------
@@ -525,13 +551,13 @@ impl ApplicationHandler for App {
 
         let vertices = [
             Vertex {
-                position: [0.0, 0.5],
+                position: [0.0, 0.2],
             },
             Vertex {
-                position: [-0.5, -0.5],
+                position: [-0.2, -0.2],
             },
             Vertex {
-                position: [0.5, -0.5],
+                position: [0.2, -0.2],
             },
         ];
 
