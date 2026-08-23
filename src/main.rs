@@ -1,0 +1,713 @@
+use std::sync::Arc;
+use std::time::Instant;
+
+use wgpu::Instance;
+use wgpu::util::DeviceExt;
+
+use winit::{
+    application::ApplicationHandler,
+    event::WindowEvent,
+    event_loop::{ActiveEventLoop, EventLoop},
+    window::{Window, WindowId},
+};
+
+// ============================================================
+// VERTEX
+// ============================================================
+
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct Vertex {
+    position: [f32; 2],
+}
+
+impl Vertex {
+    const ATTRIBS: [wgpu::VertexAttribute; 1] = wgpu::vertex_attr_array![0 => Float32x2];
+
+    fn layout() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &Self::ATTRIBS,
+        }
+    }
+}
+
+// ============================================================
+// UNIFORMS
+// ============================================================
+
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct Uniforms {
+    position: [f32; 2],
+}
+
+// ============================================================
+// APP
+// ============================================================
+
+struct App {
+    window: Option<Arc<Window>>,
+
+    surface: Option<wgpu::Surface<'static>>,
+    device: Option<wgpu::Device>,
+    queue: Option<wgpu::Queue>,
+
+    config: Option<wgpu::SurfaceConfiguration>,
+
+    vertex_buffer: Option<wgpu::Buffer>,
+
+    uniform_buffer: Option<wgpu::Buffer>,
+    bind_group: Option<wgpu::BindGroup>,
+
+    render_pipeline: Option<wgpu::RenderPipeline>,
+
+    start_time: Instant,
+}
+
+// ============================================================
+// APP IMPLEMENTATION
+// ============================================================
+
+impl App {
+    fn new() -> Self {
+        Self {
+            window: None,
+
+            surface: None,
+            device: None,
+            queue: None,
+
+            config: None,
+
+            vertex_buffer: None,
+
+            uniform_buffer: None,
+            bind_group: None,
+
+            render_pipeline: None,
+
+            start_time: Instant::now(),
+        }
+    }
+
+    // ========================================================
+    // RENDER
+    // ========================================================
+
+    fn render(&mut self) {
+        let surface = match &self.surface {
+            Some(surface) => surface,
+            None => return,
+        };
+
+        let device = match &self.device {
+            Some(device) => device,
+            None => return,
+        };
+
+        let queue = match &self.queue {
+            Some(queue) => queue,
+            None => return,
+        };
+
+        let vertex_buffer = match &self.vertex_buffer {
+            Some(buffer) => buffer,
+            None => return,
+        };
+
+        let uniform_buffer = match &self.uniform_buffer {
+            Some(buffer) => buffer,
+            None => return,
+        };
+
+        let bind_group = match &self.bind_group {
+            Some(bind_group) => bind_group,
+            None => return,
+        };
+
+        let render_pipeline = match &self.render_pipeline {
+            Some(pipeline) => pipeline,
+            None => return,
+        };
+
+        // ----------------------------------------------------
+        // CALCULATE TRIANGLE POSITION
+        // ----------------------------------------------------
+
+        let time = self.start_time.elapsed().as_secs_f32();
+
+        let x = time.sin() * 0.5;
+        let y = time.cos() * 0.25;
+
+        let uniforms = Uniforms { position: [x, y] };
+
+        // ----------------------------------------------------
+        // SEND POSITION TO GPU
+        // ----------------------------------------------------
+
+        queue.write_buffer(uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
+
+        // ----------------------------------------------------
+        // GET NEXT FRAME
+        // ----------------------------------------------------
+
+        let output = match surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(output) => output,
+
+            wgpu::CurrentSurfaceTexture::Suboptimal(output) => output,
+
+            wgpu::CurrentSurfaceTexture::Timeout => {
+                return;
+            }
+
+            wgpu::CurrentSurfaceTexture::Occluded => {
+                return;
+            }
+
+            wgpu::CurrentSurfaceTexture::Outdated => {
+                return;
+            }
+
+            wgpu::CurrentSurfaceTexture::Lost => {
+                return;
+            }
+
+            wgpu::CurrentSurfaceTexture::Validation => {
+                return;
+            }
+        };
+
+        // ----------------------------------------------------
+        // CREATE VIEW
+        // ----------------------------------------------------
+
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
+        // ----------------------------------------------------
+        // CREATE COMMAND ENCODER
+        // ----------------------------------------------------
+
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Render Encoder"),
+        });
+
+        // ----------------------------------------------------
+        // RENDER PASS
+        // ----------------------------------------------------
+
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("Render Pass"),
+
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &view,
+                    depth_slice: None,
+                    resolve_target: None,
+
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.05,
+                            g: 0.10,
+                            b: 0.20,
+                            a: 1.0,
+                        }),
+
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+
+            // ------------------------------------------------
+            // USE PIPELINE
+            // ------------------------------------------------
+
+            render_pass.set_pipeline(render_pipeline);
+
+            // ------------------------------------------------
+            // BIND UNIFORM BUFFER
+            // ------------------------------------------------
+
+            render_pass.set_bind_group(0, bind_group, &[]);
+
+            // ------------------------------------------------
+            // BIND VERTEX BUFFER
+            // ------------------------------------------------
+
+            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+
+            // ------------------------------------------------
+            // DRAW TRIANGLE
+            // ------------------------------------------------
+
+            render_pass.draw(0..3, 0..1);
+        }
+
+        // ----------------------------------------------------
+        // SUBMIT COMMANDS
+        // ----------------------------------------------------
+
+        queue.submit(Some(encoder.finish()));
+
+        // ----------------------------------------------------
+        // PRESENT FRAME
+        // ----------------------------------------------------
+
+        queue.present(output);
+    }
+
+    // ========================================================
+    // RESIZE
+    // ========================================================
+
+    fn resize(&mut self, width: u32, height: u32) {
+        if width == 0 || height == 0 {
+            return;
+        }
+
+        let surface = match &self.surface {
+            Some(surface) => surface,
+            None => return,
+        };
+
+        let device = match &self.device {
+            Some(device) => device,
+            None => return,
+        };
+
+        let config = match &mut self.config {
+            Some(config) => config,
+            None => return,
+        };
+
+        config.width = width;
+        config.height = height;
+
+        surface.configure(device, config);
+
+        println!("Resized to {}x{}", width, height);
+    }
+}
+
+// ============================================================
+// APPLICATION HANDLER
+// ============================================================
+
+impl ApplicationHandler for App {
+    // ========================================================
+    // RESUMED
+    // ========================================================
+
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        // ----------------------------------------------------
+        // WINDOW
+        // ----------------------------------------------------
+
+        let window_attributes = Window::default_attributes().with_title("My Game Engine");
+
+        let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+
+        // ----------------------------------------------------
+        // WGPU INSTANCE
+        // ----------------------------------------------------
+
+        let instance = Instance::default();
+
+        // ----------------------------------------------------
+        // SURFACE
+        // ----------------------------------------------------
+
+        let surface = instance.create_surface(window.clone()).unwrap();
+
+        // ----------------------------------------------------
+        // ADAPTER
+        // ----------------------------------------------------
+
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::default(),
+
+            force_fallback_adapter: false,
+
+            compatible_surface: Some(&surface),
+
+            apply_limit_buckets: false,
+        }))
+        .expect("Failed to find a suitable GPU adapter");
+
+        println!("GPU: {:?}", adapter.get_info());
+
+        // ----------------------------------------------------
+        // DEVICE + QUEUE
+        // ----------------------------------------------------
+
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some("Game Engine Device"),
+
+            required_features: wgpu::Features::empty(),
+
+            required_limits: wgpu::Limits::default(),
+
+            experimental_features: wgpu::ExperimentalFeatures::disabled(),
+
+            memory_hints: wgpu::MemoryHints::default(),
+
+            trace: wgpu::Trace::Off,
+        }))
+        .expect("Failed to create GPU device");
+
+        println!("Device created!");
+
+        // ----------------------------------------------------
+        // SURFACE CONFIGURATION
+        // ----------------------------------------------------
+
+        let size = window.inner_size();
+
+        let mut config = surface
+            .get_default_config(&adapter, size.width, size.height)
+            .expect("Surface is not supported by this adapter");
+
+        // VSync
+        config.present_mode = wgpu::PresentMode::Fifo;
+
+        surface.configure(&device, &config);
+
+        println!("Surface configured!");
+
+        // ----------------------------------------------------
+        // VERTICES
+        // ----------------------------------------------------
+
+        let vertices = [
+            Vertex {
+                position: [0.0, 0.5],
+            },
+            Vertex {
+                position: [-0.5, -0.5],
+            },
+            Vertex {
+                position: [0.5, -0.5],
+            },
+        ];
+
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Triangle Vertex Buffer"),
+
+            contents: bytemuck::cast_slice(&vertices),
+
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        println!("Vertex buffer created!");
+
+        // ----------------------------------------------------
+        // INITIAL UNIFORMS
+        // ----------------------------------------------------
+
+        let uniforms = Uniforms {
+            position: [0.0, 0.0],
+        };
+
+        // ----------------------------------------------------
+        // UNIFORM BUFFER
+        // ----------------------------------------------------
+
+        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Uniform Buffer"),
+
+            contents: bytemuck::bytes_of(&uniforms),
+
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        println!("Uniform buffer created!");
+
+        // ----------------------------------------------------
+        // BIND GROUP LAYOUT
+        // ----------------------------------------------------
+
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Uniform Bind Group Layout"),
+
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+
+                visibility: wgpu::ShaderStages::VERTEX,
+
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+
+                    has_dynamic_offset: false,
+
+                    min_binding_size: None,
+                },
+
+                count: None,
+            }],
+        });
+
+        // ----------------------------------------------------
+        // BIND GROUP
+        // ----------------------------------------------------
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Uniform Bind Group"),
+
+            layout: &bind_group_layout,
+
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+
+                resource: uniform_buffer.as_entire_binding(),
+            }],
+        });
+
+        println!("Bind group created!");
+
+        // ----------------------------------------------------
+        // SHADER
+        // ----------------------------------------------------
+
+        let shader_source = r#"
+
+            struct VertexInput {
+                @location(0)
+                position: vec2<f32>,
+            };
+
+            struct VertexOutput {
+                @builtin(position)
+                position: vec4<f32>,
+            };
+
+            struct Uniforms {
+                position: vec2<f32>,
+            };
+
+            @group(0)
+            @binding(0)
+            var<uniform> uniforms: Uniforms;
+
+
+            @vertex
+            fn vs_main(
+                input: VertexInput
+            ) -> VertexOutput {
+
+                var output: VertexOutput;
+
+                output.position = vec4<f32>(
+                    input.position.x + uniforms.position.x,
+                    input.position.y + uniforms.position.y,
+                    0.0,
+                    1.0
+                );
+
+                return output;
+            }
+
+
+            @fragment
+            fn fs_main()
+                -> @location(0) vec4<f32> {
+
+                return vec4<f32>(
+                    0.1,
+                    0.8,
+                    1.0,
+                    1.0
+                );
+            }
+
+        "#;
+
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Triangle Shader"),
+
+            source: wgpu::ShaderSource::Wgsl(shader_source.into()),
+        });
+
+        println!("Shader created!");
+
+        // ----------------------------------------------------
+        // VERTEX LAYOUT
+        // ----------------------------------------------------
+
+        let vertex_layout = Vertex::layout();
+
+        // ----------------------------------------------------
+        // PIPELINE LAYOUT
+        // ----------------------------------------------------
+
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Triangle Pipeline Layout"),
+
+            bind_group_layouts: &[Some(&bind_group_layout)],
+
+            immediate_size: 0,
+        });
+
+        println!("Pipeline layout created!");
+
+        // ----------------------------------------------------
+        // RENDER PIPELINE
+        // ----------------------------------------------------
+
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Triangle Render Pipeline"),
+
+            layout: Some(&pipeline_layout),
+
+            vertex: wgpu::VertexState {
+                module: &shader,
+
+                entry_point: Some("vs_main"),
+
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+
+                buffers: &[Some(vertex_layout)],
+            },
+
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+
+                strip_index_format: None,
+
+                front_face: wgpu::FrontFace::Ccw,
+
+                cull_mode: None,
+
+                unclipped_depth: false,
+
+                polygon_mode: wgpu::PolygonMode::Fill,
+
+                conservative: false,
+            },
+
+            depth_stencil: None,
+
+            multisample: wgpu::MultisampleState {
+                count: 1,
+
+                mask: !0,
+
+                alpha_to_coverage_enabled: false,
+            },
+
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+
+                entry_point: Some("fs_main"),
+
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+
+                    blend: Some(wgpu::BlendState::REPLACE),
+
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+
+            multiview_mask: None,
+
+            cache: None,
+        });
+
+        println!("Render pipeline created!");
+
+        // ----------------------------------------------------
+        // STORE EVERYTHING
+        // ----------------------------------------------------
+
+        self.window = Some(window);
+
+        self.surface = Some(surface);
+
+        self.device = Some(device);
+
+        self.queue = Some(queue);
+
+        self.config = Some(config);
+
+        self.vertex_buffer = Some(vertex_buffer);
+
+        self.uniform_buffer = Some(uniform_buffer);
+
+        self.bind_group = Some(bind_group);
+
+        self.render_pipeline = Some(render_pipeline);
+
+        println!("Game Engine initialized!");
+
+        // ----------------------------------------------------
+        // FIRST FRAME
+        // ----------------------------------------------------
+
+        if let Some(window) = &self.window {
+            window.request_redraw();
+        }
+    }
+
+    // ========================================================
+    // WINDOW EVENTS
+    // ========================================================
+
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        _window_id: WindowId,
+        event: WindowEvent,
+    ) {
+        match event {
+            // ------------------------------------------------
+            // CLOSE WINDOW
+            // ------------------------------------------------
+            WindowEvent::CloseRequested => {
+                event_loop.exit();
+            }
+
+            // ------------------------------------------------
+            // RESIZE
+            // ------------------------------------------------
+            WindowEvent::Resized(size) => {
+                self.resize(size.width, size.height);
+            }
+
+            // ------------------------------------------------
+            // DRAW FRAME
+            // ------------------------------------------------
+            WindowEvent::RedrawRequested => {
+                self.render();
+
+                // Request another frame.
+                if let Some(window) = &self.window {
+                    window.request_redraw();
+                }
+            }
+
+            _ => {}
+        }
+    }
+}
+
+// ============================================================
+// MAIN
+// ============================================================
+
+fn main() {
+    let event_loop = EventLoop::new().expect("Failed to create event loop");
+
+    let mut app = App::new();
+
+    event_loop.run_app(&mut app).expect("Event loop failed");
+}
