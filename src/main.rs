@@ -1,12 +1,16 @@
 // ============================================================
-// GAME ENGINE v0.1
+// GAME ENGINE v0.2
 // WGPU + WINIT
-// Keyboard Controlled Triangle
+//
+// Features:
+// - WASD movement
+// - I/O speed control
+// - Triangle rendering
+// - PNG/JPG texture rendering
 // ============================================================
 
 use std::sync::Arc;
 
-use wgpu::Instance;
 use wgpu::util::DeviceExt;
 
 use winit::{
@@ -18,6 +22,14 @@ use winit::{
 };
 
 // ============================================================
+// TEXTURE MODULE
+// ============================================================
+
+mod texture;
+
+use texture::Texture;
+
+// ============================================================
 // VERTEX
 // ============================================================
 
@@ -25,10 +37,15 @@ use winit::{
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct Vertex {
     position: [f32; 2],
+
+    tex_coords: [f32; 2],
 }
 
 impl Vertex {
-    const ATTRIBS: [wgpu::VertexAttribute; 1] = wgpu::vertex_attr_array![0 => Float32x2];
+    const ATTRIBS: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![
+        0 => Float32x2,
+        1 => Float32x2
+    ];
 
     fn layout() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
@@ -61,6 +78,7 @@ struct KeyboardState {
     s: bool,
     a: bool,
     d: bool,
+
     i: bool,
     o: bool,
 }
@@ -93,7 +111,17 @@ struct App {
 
     uniform_buffer: Option<wgpu::Buffer>,
 
-    bind_group: Option<wgpu::BindGroup>,
+    // --------------------------------------------------------
+    // BIND GROUPS
+    // --------------------------------------------------------
+    uniform_bind_group: Option<wgpu::BindGroup>,
+
+    texture_bind_group: Option<wgpu::BindGroup>,
+
+    // --------------------------------------------------------
+    // TEXTURE
+    // --------------------------------------------------------
+    texture: Option<Texture>,
 
     // --------------------------------------------------------
     // RENDER PIPELINE
@@ -131,7 +159,11 @@ impl App {
 
             uniform_buffer: None,
 
-            bind_group: None,
+            uniform_bind_group: None,
+
+            texture_bind_group: None,
+
+            texture: None,
 
             render_pipeline: None,
 
@@ -231,7 +263,13 @@ impl App {
         }
 
         // ----------------------------------------------------
-        // KEEP TRIANGLE INSIDE SCREEN
+        // PREVENT NEGATIVE SPEED
+        // ----------------------------------------------------
+
+        self.speed = self.speed.max(0.0001);
+
+        // ----------------------------------------------------
+        // KEEP OBJECT INSIDE SCREEN
         // ----------------------------------------------------
 
         self.position[0] = self.position[0].clamp(-1.0, 1.0);
@@ -245,7 +283,7 @@ impl App {
 
     fn render(&mut self) {
         // ----------------------------------------------------
-        // UPDATE GAME STATE
+        // UPDATE
         // ----------------------------------------------------
 
         self.update();
@@ -279,7 +317,12 @@ impl App {
             None => return,
         };
 
-        let bind_group = match &self.bind_group {
+        let uniform_bind_group = match &self.uniform_bind_group {
+            Some(bind_group) => bind_group,
+            None => return,
+        };
+
+        let texture_bind_group = match &self.texture_bind_group {
             Some(bind_group) => bind_group,
             None => return,
         };
@@ -290,21 +333,17 @@ impl App {
         };
 
         // ----------------------------------------------------
-        // CREATE UNIFORMS
+        // UPDATE UNIFORM
         // ----------------------------------------------------
 
         let uniforms = Uniforms {
             position: self.position,
         };
 
-        // ----------------------------------------------------
-        // SEND POSITION TO GPU
-        // ----------------------------------------------------
-
         queue.write_buffer(uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
 
         // ----------------------------------------------------
-        // GET NEXT FRAME
+        // GET FRAME
         // ----------------------------------------------------
 
         let output = match surface.get_current_texture() {
@@ -312,23 +351,7 @@ impl App {
 
             wgpu::CurrentSurfaceTexture::Suboptimal(output) => output,
 
-            wgpu::CurrentSurfaceTexture::Timeout => {
-                return;
-            }
-
-            wgpu::CurrentSurfaceTexture::Occluded => {
-                return;
-            }
-
-            wgpu::CurrentSurfaceTexture::Outdated => {
-                return;
-            }
-
-            wgpu::CurrentSurfaceTexture::Lost => {
-                return;
-            }
-
-            wgpu::CurrentSurfaceTexture::Validation => {
+            _ => {
                 return;
             }
         };
@@ -342,7 +365,7 @@ impl App {
             .create_view(&wgpu::TextureViewDescriptor::default());
 
         // ----------------------------------------------------
-        // CREATE COMMAND ENCODER
+        // COMMAND ENCODER
         // ----------------------------------------------------
 
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -395,10 +418,16 @@ impl App {
             // UNIFORM
             // ------------------------------------------------
 
-            render_pass.set_bind_group(0, bind_group, &[]);
+            render_pass.set_bind_group(0, uniform_bind_group, &[]);
 
             // ------------------------------------------------
-            // VERTEX BUFFER
+            // TEXTURE
+            // ------------------------------------------------
+
+            render_pass.set_bind_group(1, texture_bind_group, &[]);
+
+            // ------------------------------------------------
+            // VERTICES
             // ------------------------------------------------
 
             render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
@@ -407,7 +436,7 @@ impl App {
             // DRAW
             // ------------------------------------------------
 
-            render_pass.draw(0..3, 0..1);
+            render_pass.draw(0..6, 0..1);
         }
 
         // ----------------------------------------------------
@@ -471,7 +500,7 @@ impl ApplicationHandler for App {
         // WINDOW
         // ----------------------------------------------------
 
-        let window_attributes = Window::default_attributes().with_title("My Game Engine v0.1");
+        let window_attributes = Window::default_attributes().with_title("My Game Engine v0.2");
 
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
@@ -479,7 +508,7 @@ impl ApplicationHandler for App {
         // WGPU INSTANCE
         // ----------------------------------------------------
 
-        let instance = Instance::default();
+        let instance = wgpu::Instance::default();
 
         // ----------------------------------------------------
         // SURFACE
@@ -533,7 +562,7 @@ impl ApplicationHandler for App {
 
         let mut config = surface
             .get_default_config(&adapter, size.width, size.height)
-            .expect("Surface is not supported by this adapter");
+            .expect("Surface is not supported");
 
         // ----------------------------------------------------
         // VSYNC
@@ -545,19 +574,58 @@ impl ApplicationHandler for App {
 
         println!("Surface configured!");
 
-        // ----------------------------------------------------
-        // TRIANGLE VERTICES
-        // ----------------------------------------------------
+        // ====================================================
+        // TEXTURED QUAD
+        // ====================================================
 
         let vertices = [
+            // ------------------------------------------------
+            // TOP LEFT
+            // ------------------------------------------------
             Vertex {
-                position: [0.0, 0.2],
+                position: [-0.5, 0.5],
+
+                tex_coords: [0.0, 0.0],
             },
+            // ------------------------------------------------
+            // TOP RIGHT
+            // ------------------------------------------------
             Vertex {
-                position: [-0.2, -0.2],
+                position: [0.5, 0.5],
+
+                tex_coords: [1.0, 0.0],
             },
+            // ------------------------------------------------
+            // BOTTOM RIGHT
+            // ------------------------------------------------
             Vertex {
-                position: [0.2, -0.2],
+                position: [0.5, -0.5],
+
+                tex_coords: [1.0, 1.0],
+            },
+            // ------------------------------------------------
+            // TOP LEFT
+            // ------------------------------------------------
+            Vertex {
+                position: [-0.5, 0.5],
+
+                tex_coords: [0.0, 0.0],
+            },
+            // ------------------------------------------------
+            // BOTTOM RIGHT
+            // ------------------------------------------------
+            Vertex {
+                position: [0.5, -0.5],
+
+                tex_coords: [1.0, 1.0],
+            },
+            // ------------------------------------------------
+            // BOTTOM LEFT
+            // ------------------------------------------------
+            Vertex {
+                position: [-0.5, -0.5],
+
+                tex_coords: [0.0, 1.0],
             },
         ];
 
@@ -566,7 +634,7 @@ impl ApplicationHandler for App {
         // ----------------------------------------------------
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Triangle Vertex Buffer"),
+            label: Some("Textured Quad Vertex Buffer"),
 
             contents: bytemuck::cast_slice(&vertices),
 
@@ -575,9 +643,9 @@ impl ApplicationHandler for App {
 
         println!("Vertex buffer created!");
 
-        // ----------------------------------------------------
-        // INITIAL UNIFORMS
-        // ----------------------------------------------------
+        // ====================================================
+        // UNIFORMS
+        // ====================================================
 
         let uniforms = Uniforms {
             position: [0.0, 0.0],
@@ -597,38 +665,35 @@ impl ApplicationHandler for App {
 
         println!("Uniform buffer created!");
 
-        // ----------------------------------------------------
-        // BIND GROUP LAYOUT
-        // ----------------------------------------------------
+        // ====================================================
+        // UNIFORM BIND GROUP
+        // ====================================================
 
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Uniform Bind Group Layout"),
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Uniform Bind Group Layout"),
 
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
 
-                visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX,
 
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
 
-                    has_dynamic_offset: false,
+                        has_dynamic_offset: false,
 
-                    min_binding_size: None,
-                },
+                        min_binding_size: None,
+                    },
 
-                count: None,
-            }],
-        });
+                    count: None,
+                }],
+            });
 
-        // ----------------------------------------------------
-        // BIND GROUP
-        // ----------------------------------------------------
-
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Uniform Bind Group"),
 
-            layout: &bind_group_layout,
+            layout: &uniform_bind_group_layout,
 
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
@@ -637,31 +702,153 @@ impl ApplicationHandler for App {
             }],
         });
 
-        println!("Bind group created!");
+        println!("Uniform bind group created!");
 
-        // ----------------------------------------------------
+        // ====================================================
+        // LOAD IMAGE
+        // ====================================================
+
+        let texture = Texture::from_file(&device, &queue, "assets/test.jpg");
+
+        println!("Texture loaded!");
+
+        // ====================================================
+        // TEXTURE BIND GROUP LAYOUT
+        // ====================================================
+
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Texture Bind Group Layout"),
+
+                entries: &[
+                    // ------------------------------------
+                    // TEXTURE
+                    // ------------------------------------
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
+
+                            view_dimension: wgpu::TextureViewDimension::D2,
+
+                            multisampled: false,
+                        },
+
+                        count: None,
+                    },
+                    // ------------------------------------
+                    // SAMPLER
+                    // ------------------------------------
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+
+                        ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+
+                        count: None,
+                    },
+                ],
+            });
+
+        // ====================================================
+        // TEXTURE BIND GROUP
+        // ====================================================
+
+        let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Texture Bind Group"),
+
+            layout: &texture_bind_group_layout,
+
+            entries: &[
+                // ------------------------------------
+                // TEXTURE
+                // ------------------------------------
+                wgpu::BindGroupEntry {
+                    binding: 0,
+
+                    resource: wgpu::BindingResource::TextureView(&texture.view),
+                },
+                // ------------------------------------
+                // SAMPLER
+                // ------------------------------------
+                wgpu::BindGroupEntry {
+                    binding: 1,
+
+                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
+                },
+            ],
+        });
+
+        println!("Texture bind group created!");
+
+        // ====================================================
         // SHADER
-        // ----------------------------------------------------
+        // ====================================================
 
         let shader_source = r#"
 
+            // =================================================
+            // VERTEX INPUT
+            // =================================================
+
             struct VertexInput {
+
                 @location(0)
                 position: vec2<f32>,
+
+                @location(1)
+                tex_coords: vec2<f32>,
             };
+
+            // =================================================
+            // VERTEX OUTPUT
+            // =================================================
 
             struct VertexOutput {
+
                 @builtin(position)
                 position: vec4<f32>,
+
+                @location(0)
+                tex_coords: vec2<f32>,
             };
 
+            // =================================================
+            // UNIFORMS
+            // =================================================
+
             struct Uniforms {
+
                 position: vec2<f32>,
             };
 
             @group(0)
             @binding(0)
             var<uniform> uniforms: Uniforms;
+
+            // =================================================
+            // TEXTURE
+            // =================================================
+
+            @group(1)
+            @binding(0)
+            var texture_data: texture_2d<f32>;
+
+            // =================================================
+            // SAMPLER
+            // =================================================
+
+            @group(1)
+            @binding(1)
+            var texture_sampler: sampler;
+
+            // =================================================
+            // VERTEX SHADER
+            // =================================================
 
             @vertex
             fn vs_main(
@@ -670,75 +857,84 @@ impl ApplicationHandler for App {
 
                 var output: VertexOutput;
 
-                output.position = vec4<f32>(
-                    input.position.x
-                        + uniforms.position.x,
+                output.position =
+                    vec4<f32>(
+                        input.position.x
+                            + uniforms.position.x,
 
-                    input.position.y
-                        + uniforms.position.y,
+                        input.position.y
+                            + uniforms.position.y,
 
-                    0.0,
+                        0.0,
 
-                    1.0
-                );
+                        1.0
+                    );
+
+                output.tex_coords =
+                    input.tex_coords;
 
                 return output;
             }
 
-            @fragment
-            fn fs_main()
-                -> @location(0) vec4<f32> {
+            // =================================================
+            // FRAGMENT SHADER
+            // =================================================
 
-                return vec4<f32>(
-                    0.1,
-                    0.8,
-                    1.0,
-                    1.0
+            @fragment
+            fn fs_main(
+                input: VertexOutput
+            ) -> @location(0) vec4<f32> {
+
+                return textureSample(
+                    texture_data,
+                    texture_sampler,
+                    input.tex_coords
                 );
             }
 
         "#;
 
+        // ----------------------------------------------------
+        // SHADER MODULE
+        // ----------------------------------------------------
+
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Triangle Shader"),
+            label: Some("Texture Shader"),
 
             source: wgpu::ShaderSource::Wgsl(shader_source.into()),
         });
 
         println!("Shader created!");
 
-        // ----------------------------------------------------
-        // VERTEX LAYOUT
-        // ----------------------------------------------------
-
-        let vertex_layout = Vertex::layout();
-
-        // ----------------------------------------------------
+        // ====================================================
         // PIPELINE LAYOUT
-        // ----------------------------------------------------
+        // ====================================================
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Triangle Pipeline Layout"),
+            label: Some("Texture Pipeline Layout"),
 
-            bind_group_layouts: &[Some(&bind_group_layout)],
+            bind_group_layouts: &[
+                Some(&uniform_bind_group_layout),
+                Some(&texture_bind_group_layout),
+            ],
 
             immediate_size: 0,
         });
 
         println!("Pipeline layout created!");
 
-        // ----------------------------------------------------
+        // ====================================================
         // RENDER PIPELINE
-        // ----------------------------------------------------
+        // ====================================================
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Triangle Render Pipeline"),
+            label: Some("Texture Render Pipeline"),
 
             layout: Some(&pipeline_layout),
 
-            // ------------------------------------------------
+            // ----------------------------------------
             // VERTEX
-            // ------------------------------------------------
+            // ----------------------------------------
             vertex: wgpu::VertexState {
                 module: &shader,
 
@@ -746,12 +942,12 @@ impl ApplicationHandler for App {
 
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
 
-                buffers: &[Some(vertex_layout)],
+                buffers: &[Some(Vertex::layout())],
             },
 
-            // ------------------------------------------------
+            // ----------------------------------------
             // PRIMITIVE
-            // ------------------------------------------------
+            // ----------------------------------------
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
 
@@ -768,14 +964,14 @@ impl ApplicationHandler for App {
                 conservative: false,
             },
 
-            // ------------------------------------------------
+            // ----------------------------------------
             // DEPTH
-            // ------------------------------------------------
+            // ----------------------------------------
             depth_stencil: None,
 
-            // ------------------------------------------------
+            // ----------------------------------------
             // MULTISAMPLE
-            // ------------------------------------------------
+            // ----------------------------------------
             multisample: wgpu::MultisampleState {
                 count: 1,
 
@@ -784,9 +980,9 @@ impl ApplicationHandler for App {
                 alpha_to_coverage_enabled: false,
             },
 
-            // ------------------------------------------------
+            // ----------------------------------------
             // FRAGMENT
-            // ------------------------------------------------
+            // ----------------------------------------
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
 
@@ -797,7 +993,7 @@ impl ApplicationHandler for App {
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
 
-                    blend: Some(wgpu::BlendState::REPLACE),
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
 
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
@@ -810,9 +1006,9 @@ impl ApplicationHandler for App {
 
         println!("Render pipeline created!");
 
-        // ----------------------------------------------------
+        // ====================================================
         // STORE EVERYTHING
-        // ----------------------------------------------------
+        // ====================================================
 
         self.window = Some(window);
 
@@ -828,11 +1024,25 @@ impl ApplicationHandler for App {
 
         self.uniform_buffer = Some(uniform_buffer);
 
-        self.bind_group = Some(bind_group);
+        self.uniform_bind_group = Some(uniform_bind_group);
+
+        self.texture_bind_group = Some(texture_bind_group);
+
+        self.texture = Some(texture);
 
         self.render_pipeline = Some(render_pipeline);
 
-        println!("Game Engine initialized!");
+        println!("================================");
+
+        println!("Game Engine v0.2 initialized!");
+
+        println!("WASD = Move");
+
+        println!("I/O = Change speed");
+
+        println!("PNG/JPG texture loaded");
+
+        println!("================================");
 
         // ----------------------------------------------------
         // FIRST FRAME
@@ -849,6 +1059,7 @@ impl ApplicationHandler for App {
 
     fn window_event(
         &mut self,
+
         event_loop: &ActiveEventLoop,
 
         _window_id: WindowId,
