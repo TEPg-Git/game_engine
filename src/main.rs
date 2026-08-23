@@ -1,13 +1,19 @@
+// ============================================================
+// GAME ENGINE v0.1
+// WGPU + WINIT
+// Keyboard Controlled Triangle
+// ============================================================
+
 use std::sync::Arc;
-use std::time::Instant;
 
 use wgpu::Instance;
 use wgpu::util::DeviceExt;
 
 use winit::{
     application::ApplicationHandler,
-    event::WindowEvent,
+    event::{ElementState, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop},
+    keyboard::{KeyCode, PhysicalKey},
     window::{Window, WindowId},
 };
 
@@ -27,7 +33,9 @@ impl Vertex {
     fn layout() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+
             step_mode: wgpu::VertexStepMode::Vertex,
+
             attributes: &Self::ATTRIBS,
         }
     }
@@ -44,26 +52,60 @@ struct Uniforms {
 }
 
 // ============================================================
+// KEYBOARD STATE
+// ============================================================
+
+#[derive(Default)]
+struct KeyboardState {
+    w: bool,
+    s: bool,
+    a: bool,
+    d: bool,
+}
+
+// ============================================================
 // APP
 // ============================================================
 
 struct App {
+    // --------------------------------------------------------
+    // WINDOW
+    // --------------------------------------------------------
     window: Option<Arc<Window>>,
 
+    // --------------------------------------------------------
+    // WGPU
+    // --------------------------------------------------------
     surface: Option<wgpu::Surface<'static>>,
+
     device: Option<wgpu::Device>,
+
     queue: Option<wgpu::Queue>,
 
     config: Option<wgpu::SurfaceConfiguration>,
 
+    // --------------------------------------------------------
+    // GPU BUFFERS
+    // --------------------------------------------------------
     vertex_buffer: Option<wgpu::Buffer>,
 
     uniform_buffer: Option<wgpu::Buffer>,
+
     bind_group: Option<wgpu::BindGroup>,
 
+    // --------------------------------------------------------
+    // RENDER PIPELINE
+    // --------------------------------------------------------
     render_pipeline: Option<wgpu::RenderPipeline>,
 
-    start_time: Instant,
+    // --------------------------------------------------------
+    // GAME STATE
+    // --------------------------------------------------------
+    keyboard: KeyboardState,
+
+    position: [f32; 2],
+
+    speed: f32,
 }
 
 // ============================================================
@@ -76,7 +118,9 @@ impl App {
             window: None,
 
             surface: None,
+
             device: None,
+
             queue: None,
 
             config: None,
@@ -84,12 +128,89 @@ impl App {
             vertex_buffer: None,
 
             uniform_buffer: None,
+
             bind_group: None,
 
             render_pipeline: None,
 
-            start_time: Instant::now(),
+            keyboard: KeyboardState::default(),
+
+            position: [0.0, 0.0],
+
+            speed: 0.01,
         }
+    }
+
+    // ========================================================
+    // KEYBOARD INPUT
+    // ========================================================
+
+    fn handle_keyboard(&mut self, key_code: KeyCode, pressed: bool) {
+        match key_code {
+            KeyCode::KeyW => {
+                self.keyboard.w = pressed;
+            }
+
+            KeyCode::KeyS => {
+                self.keyboard.s = pressed;
+            }
+
+            KeyCode::KeyA => {
+                self.keyboard.a = pressed;
+            }
+
+            KeyCode::KeyD => {
+                self.keyboard.d = pressed;
+            }
+
+            _ => {}
+        }
+    }
+
+    // ========================================================
+    // UPDATE
+    // ========================================================
+
+    fn update(&mut self) {
+        // ----------------------------------------------------
+        // MOVE UP
+        // ----------------------------------------------------
+
+        if self.keyboard.w {
+            self.position[1] += self.speed;
+        }
+
+        // ----------------------------------------------------
+        // MOVE DOWN
+        // ----------------------------------------------------
+
+        if self.keyboard.s {
+            self.position[1] -= self.speed;
+        }
+
+        // ----------------------------------------------------
+        // MOVE LEFT
+        // ----------------------------------------------------
+
+        if self.keyboard.a {
+            self.position[0] -= self.speed;
+        }
+
+        // ----------------------------------------------------
+        // MOVE RIGHT
+        // ----------------------------------------------------
+
+        if self.keyboard.d {
+            self.position[0] += self.speed;
+        }
+
+        // ----------------------------------------------------
+        // KEEP TRIANGLE INSIDE SCREEN
+        // ----------------------------------------------------
+
+        self.position[0] = self.position[0].clamp(-1.0, 1.0);
+
+        self.position[1] = self.position[1].clamp(-1.0, 1.0);
     }
 
     // ========================================================
@@ -97,6 +218,16 @@ impl App {
     // ========================================================
 
     fn render(&mut self) {
+        // ----------------------------------------------------
+        // UPDATE GAME STATE
+        // ----------------------------------------------------
+
+        self.update();
+
+        // ----------------------------------------------------
+        // GET WGPU OBJECTS
+        // ----------------------------------------------------
+
         let surface = match &self.surface {
             Some(surface) => surface,
             None => return,
@@ -133,15 +264,12 @@ impl App {
         };
 
         // ----------------------------------------------------
-        // CALCULATE TRIANGLE POSITION
+        // CREATE UNIFORMS
         // ----------------------------------------------------
 
-        let time = self.start_time.elapsed().as_secs_f32();
-
-        let x = time.sin() * 0.5;
-        let y = time.cos() * 0.25;
-
-        let uniforms = Uniforms { position: [x, y] };
+        let uniforms = Uniforms {
+            position: self.position,
+        };
 
         // ----------------------------------------------------
         // SEND POSITION TO GPU
@@ -205,7 +333,9 @@ impl App {
 
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
+
                     depth_slice: None,
+
                     resolve_target: None,
 
                     ops: wgpu::Operations {
@@ -221,44 +351,47 @@ impl App {
                 })],
 
                 depth_stencil_attachment: None,
+
                 timestamp_writes: None,
+
                 occlusion_query_set: None,
+
                 multiview_mask: None,
             });
 
             // ------------------------------------------------
-            // USE PIPELINE
+            // PIPELINE
             // ------------------------------------------------
 
             render_pass.set_pipeline(render_pipeline);
 
             // ------------------------------------------------
-            // BIND UNIFORM BUFFER
+            // UNIFORM
             // ------------------------------------------------
 
             render_pass.set_bind_group(0, bind_group, &[]);
 
             // ------------------------------------------------
-            // BIND VERTEX BUFFER
+            // VERTEX BUFFER
             // ------------------------------------------------
 
             render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
 
             // ------------------------------------------------
-            // DRAW TRIANGLE
+            // DRAW
             // ------------------------------------------------
 
             render_pass.draw(0..3, 0..1);
         }
 
         // ----------------------------------------------------
-        // SUBMIT COMMANDS
+        // SUBMIT
         // ----------------------------------------------------
 
         queue.submit(Some(encoder.finish()));
 
         // ----------------------------------------------------
-        // PRESENT FRAME
+        // PRESENT
         // ----------------------------------------------------
 
         queue.present(output);
@@ -289,6 +422,7 @@ impl App {
         };
 
         config.width = width;
+
         config.height = height;
 
         surface.configure(device, config);
@@ -311,7 +445,7 @@ impl ApplicationHandler for App {
         // WINDOW
         // ----------------------------------------------------
 
-        let window_attributes = Window::default_attributes().with_title("My Game Engine");
+        let window_attributes = Window::default_attributes().with_title("My Game Engine v0.1");
 
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
@@ -375,7 +509,10 @@ impl ApplicationHandler for App {
             .get_default_config(&adapter, size.width, size.height)
             .expect("Surface is not supported by this adapter");
 
-        // VSync
+        // ----------------------------------------------------
+        // VSYNC
+        // ----------------------------------------------------
+
         config.present_mode = wgpu::PresentMode::Fifo;
 
         surface.configure(&device, &config);
@@ -383,7 +520,7 @@ impl ApplicationHandler for App {
         println!("Surface configured!");
 
         // ----------------------------------------------------
-        // VERTICES
+        // TRIANGLE VERTICES
         // ----------------------------------------------------
 
         let vertices = [
@@ -397,6 +534,10 @@ impl ApplicationHandler for App {
                 position: [0.5, -0.5],
             },
         ];
+
+        // ----------------------------------------------------
+        // VERTEX BUFFER
+        // ----------------------------------------------------
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Triangle Vertex Buffer"),
@@ -496,7 +637,6 @@ impl ApplicationHandler for App {
             @binding(0)
             var<uniform> uniforms: Uniforms;
 
-
             @vertex
             fn vs_main(
                 input: VertexInput
@@ -505,15 +645,19 @@ impl ApplicationHandler for App {
                 var output: VertexOutput;
 
                 output.position = vec4<f32>(
-                    input.position.x + uniforms.position.x,
-                    input.position.y + uniforms.position.y,
+                    input.position.x
+                        + uniforms.position.x,
+
+                    input.position.y
+                        + uniforms.position.y,
+
                     0.0,
+
                     1.0
                 );
 
                 return output;
             }
-
 
             @fragment
             fn fs_main()
@@ -566,6 +710,9 @@ impl ApplicationHandler for App {
 
             layout: Some(&pipeline_layout),
 
+            // ------------------------------------------------
+            // VERTEX
+            // ------------------------------------------------
             vertex: wgpu::VertexState {
                 module: &shader,
 
@@ -576,6 +723,9 @@ impl ApplicationHandler for App {
                 buffers: &[Some(vertex_layout)],
             },
 
+            // ------------------------------------------------
+            // PRIMITIVE
+            // ------------------------------------------------
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
 
@@ -592,8 +742,14 @@ impl ApplicationHandler for App {
                 conservative: false,
             },
 
+            // ------------------------------------------------
+            // DEPTH
+            // ------------------------------------------------
             depth_stencil: None,
 
+            // ------------------------------------------------
+            // MULTISAMPLE
+            // ------------------------------------------------
             multisample: wgpu::MultisampleState {
                 count: 1,
 
@@ -602,6 +758,9 @@ impl ApplicationHandler for App {
                 alpha_to_coverage_enabled: false,
             },
 
+            // ------------------------------------------------
+            // FRAGMENT
+            // ------------------------------------------------
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
 
@@ -665,12 +824,14 @@ impl ApplicationHandler for App {
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
+
         _window_id: WindowId,
+
         event: WindowEvent,
     ) {
         match event {
             // ------------------------------------------------
-            // CLOSE WINDOW
+            // CLOSE
             // ------------------------------------------------
             WindowEvent::CloseRequested => {
                 event_loop.exit();
@@ -684,12 +845,22 @@ impl ApplicationHandler for App {
             }
 
             // ------------------------------------------------
-            // DRAW FRAME
+            // KEYBOARD
+            // ------------------------------------------------
+            WindowEvent::KeyboardInput { event, .. } => {
+                let pressed = event.state == ElementState::Pressed;
+
+                if let PhysicalKey::Code(key_code) = event.physical_key {
+                    self.handle_keyboard(key_code, pressed);
+                }
+            }
+
+            // ------------------------------------------------
+            // DRAW
             // ------------------------------------------------
             WindowEvent::RedrawRequested => {
                 self.render();
 
-                // Request another frame.
                 if let Some(window) = &self.window {
                     window.request_redraw();
                 }
