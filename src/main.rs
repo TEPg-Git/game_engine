@@ -277,6 +277,27 @@ impl App {
         self.position[1] = self.position[1].clamp(-1.0, 1.0);
     }
 
+    fn toggle_fullscreen(&mut self) {
+        if let Some(window) = &self.window {
+            if window.fullscreen().is_some() {
+                // --------------------------------------------
+                // RETURN TO WINDOWED MODE
+                // --------------------------------------------
+
+                window.set_fullscreen(None);
+
+                println!("Fullscreen: OFF");
+            } else {
+                // --------------------------------------------
+                // ENTER FULLSCREEN
+                // --------------------------------------------
+
+                window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(None)));
+
+                println!("Fullscreen: ON");
+            }
+        }
+    }
     // ========================================================
     // RENDER
     // ========================================================
@@ -1088,7 +1109,15 @@ impl ApplicationHandler for App {
                 let pressed = event.state == ElementState::Pressed;
 
                 if let PhysicalKey::Code(key_code) = event.physical_key {
-                    self.handle_keyboard(key_code, pressed);
+                    // --------------------------------------------
+                    // F = TOGGLE FULLSCREEN
+                    // --------------------------------------------
+
+                    if key_code == KeyCode::KeyF && pressed {
+                        self.toggle_fullscreen();
+                    } else {
+                        self.handle_keyboard(key_code, pressed);
+                    }
                 }
             }
 
