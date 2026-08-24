@@ -7,6 +7,7 @@
 // - I/O speed control
 // - Triangle rendering
 // - PNG/JPG texture rendering
+// - Full_Screen feature
 // ============================================================
 
 use std::sync::Arc;

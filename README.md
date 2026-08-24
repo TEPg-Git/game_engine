@@ -21,7 +21,10 @@ I'm learning and implementing the engine step by step.
 - GPU initialization
 - Rendering pipeline
 - Triangle rendering
-- Triangle movement (in progress)
+- Triangle movement 
+- Texture Rendering
+- Full Screen toggle
+- Multiple Objects Rendering (in progress)
 
 ## Project Goal
 
