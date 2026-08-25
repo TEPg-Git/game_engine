@@ -1,3 +1,4 @@
+//Shader WGSL
 struct VertexInput {
     @location(0)
     position: vec2<f32>,

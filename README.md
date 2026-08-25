@@ -24,7 +24,8 @@ I'm learning and implementing the engine step by step.
 - Triangle movement 
 - Texture Rendering
 - Full Screen toggle
-- Multiple Objects Rendering (in progress)
+- Multiple Objects Rendering
+- Moving different Objects Independently (In Progress)
 
 ## Project Goal
 
