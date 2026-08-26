@@ -26,6 +26,11 @@ I'm learning and implementing the engine step by step.
 - Full Screen toggle
 - Multiple Objects Rendering
 - Moving different Objects Independently (In Progress)
+- 3D Model Rendering
+- Circle rendering
+- Esc Button closes window
+- TEXT Rendering
+- ....
 
 ## Project Goal
 
