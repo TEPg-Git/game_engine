@@ -1004,6 +1004,15 @@ impl ApplicationHandler for App {
                 let pressed = event.state == ElementState::Pressed;
 
                 if let PhysicalKey::Code(key_code) = event.physical_key {
+                    //Escape key closes the loop
+                    if key_code == KeyCode::Escape {
+                        if pressed {
+                            println!("Escape pressed");
+                        }
+
+                        event_loop.exit();
+                    }
+
                     // --------------------------------------------
                     // F = TOGGLE FULLSCREEN
                     // --------------------------------------------

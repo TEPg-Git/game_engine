@@ -53,13 +53,13 @@ The engine is being developed incrementally.
 - [x] Texture rendering
 - [x] Fullscreen toggle
 - [x] Multiple object rendering
+- [x] ESC key closes the window
 
 ### In Progress
 
 - [ ] Independent movement of multiple objects
 - [ ] Circle rendering
 - [ ] Text rendering
-- [ ] ESC key closes the window
 - [ ] 3D model rendering
 
 More features will be added as development continues.
