@@ -54,11 +54,11 @@ The engine is being developed incrementally.
 - [x] Fullscreen toggle
 - [x] Multiple object rendering
 - [x] ESC key closes the window
+- [x] Circle Rendering
 
 ### In Progress
 
 - [ ] Independent movement of multiple objects
-- [ ] Circle rendering
 - [ ] Text rendering
 - [ ] 3D model rendering
 
@@ -116,7 +116,7 @@ Each feature is an opportunity to understand what is happening underneath the ab
 
 ---
 
-## 📂 Project Structure
+📂 Project Structure
 
 The project structure will continue to evolve as new engine systems are introduced.
 

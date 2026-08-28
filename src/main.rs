@@ -137,6 +137,48 @@ struct App {
     position: [f32; 2],
 
     speed: f32,
+
+    vertex_count: u32,
+}
+
+// ============================================================
+// CIRCLE
+// ============================================================
+
+fn create_circle_vertices(segments: u32, radius: f32) -> Vec<Vertex> {
+    let mut vertices = Vec::new();
+
+    for i in 0..segments {
+        let angle1 = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
+
+        let angle2 = 2.0 * std::f32::consts::PI * (i + 1) as f32 / segments as f32;
+
+        let x1 = radius * angle1.cos();
+        let y1 = radius * angle1.sin();
+
+        let x2 = radius * angle2.cos();
+        let y2 = radius * angle2.sin();
+
+        // Center
+        vertices.push(Vertex {
+            position: [0.0, 0.0],
+            tex_coords: [0.5, 0.5],
+        });
+
+        // First outer point
+        vertices.push(Vertex {
+            position: [x1, y1],
+            tex_coords: [0.5 + x1 / (2.0 * radius), 0.5 + y1 / (2.0 * radius)],
+        });
+
+        // Second outer point
+        vertices.push(Vertex {
+            position: [x2, y2],
+            tex_coords: [0.5 + x2 / (2.0 * radius), 0.5 + y2 / (2.0 * radius)],
+        });
+    }
+
+    vertices
 }
 
 // ============================================================
@@ -173,6 +215,8 @@ impl App {
             position: [0.0, 0.0],
 
             speed: 0.001,
+
+            vertex_count: 0,
         }
     }
 
@@ -458,7 +502,7 @@ impl App {
             // DRAW
             // ------------------------------------------------
 
-            render_pass.draw(0..9, 0..1);
+            render_pass.draw(0..self.vertex_count, 0..1);
         }
 
         // ----------------------------------------------------
@@ -600,65 +644,24 @@ impl ApplicationHandler for App {
         // VERTEX
         // ====================================================
 
-        let vertices = [
-            // ========================================================
-            // TRIANGLE 1
-            // ========================================================
-            Vertex {
-                position: [-0.8, 0.7],
-                tex_coords: [0.0, 0.0],
-            },
-            Vertex {
-                position: [-0.3, 0.7],
-                tex_coords: [1.0, 0.0],
-            },
-            Vertex {
-                position: [-0.55, 0.2],
-                tex_coords: [0.5, 1.0],
-            },
-            // ========================================================
-            // TRIANGLE 2
-            // ========================================================
-            Vertex {
-                position: [0.3, 0.7],
-                tex_coords: [0.0, 0.0],
-            },
-            Vertex {
-                position: [0.8, 0.7],
-                tex_coords: [1.0, 0.0],
-            },
-            Vertex {
-                position: [0.55, 0.2],
-                tex_coords: [0.5, 1.0],
-            },
-            // ========================================================
-            // TRIANGLE 3
-            // ========================================================
-            Vertex {
-                position: [-0.25, -0.2],
-                tex_coords: [0.0, 0.0],
-            },
-            Vertex {
-                position: [0.25, -0.2],
-                tex_coords: [1.0, 0.0],
-            },
-            Vertex {
-                position: [0.0, -0.7],
-                tex_coords: [0.5, 1.0],
-            },
-        ];
+        let segments = 32;
+        let radius = 0.5;
+
+        let vertices = create_circle_vertices(segments, radius);
 
         // ----------------------------------------------------
         // VERTEX BUFFER
         // ----------------------------------------------------
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Textured Quad Vertex Buffer"),
+            label: Some("Circle Vertex Buffer"),
 
             contents: bytemuck::cast_slice(&vertices),
 
             usage: wgpu::BufferUsages::VERTEX,
         });
+
+        self.vertex_count = vertices.len() as u32;
 
         println!("Vertex buffer created!");
 
