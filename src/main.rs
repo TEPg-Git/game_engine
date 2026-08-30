@@ -21,6 +21,16 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
     window::{Window, WindowId},
 };
+//Text Rendering
+use fontdue::Font;
+
+const FONT_DATA: &[u8] =
+    include_bytes!("../assets/Roboto-VariableFont_wdth,wght.ttf");
+
+fn load_font() -> Font {
+    Font::from_bytes(FONT_DATA, fontdue::FontSettings::default())
+        .expect("Failed to load font")
+}
 
 // ============================================================
 // TEXTURE MODULE
@@ -1054,4 +1064,49 @@ fn main() {
     let mut app = App::new();
 
     event_loop.run_app(&mut app).expect("Event loop failed");
+
+    // ========================================================
+    // TEXT RENDERING TEST
+    // ========================================================
+
+    let font = load_font();
+
+    let (metrics, bitmap) =
+        font.rasterize(
+            'A',
+            48.0,
+        );
+
+    println!("Width: {}", metrics.width);
+
+    println!(
+        "Height: {}",
+        metrics.height
+    );
+
+    println!(
+        "Bitmap size: {}",
+        bitmap.len()
+    );
+
+    // --------------------------------------------------------
+    // PRINT GLYPH AS ASCII ART
+    // --------------------------------------------------------
+
+    for y in 0..metrics.height {
+        for x in 0..metrics.width {
+            let value =
+                bitmap[
+                    y * metrics.width + x
+                ];
+
+            if value > 128 {
+                print!("██");
+            } else {
+                print!("  ");
+            }
+        }
+
+        println!();
+    }
 }
