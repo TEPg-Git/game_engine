@@ -1,11 +1,13 @@
 # East Engine
 
-**East Engine** is a rendering engine built from scratch using **Rust**, designed for two primary purposes:
+**East Engine** is a real-time rendering engine built from scratch using **Rust**.
+
+The engine is being developed with two primary goals:
 
 - 🎮 **Game Development**
 - 📊 **Real-Time Visualizations**
 
-The project is being developed step by step, with a focus on understanding how rendering engines work internally — from window creation and GPU initialization to rendering pipelines, shaders, textures, models, and eventually a complete engine architecture.
+The project focuses on understanding how rendering engines work internally — from creating a window and communicating with the GPU to rendering geometry, textures, text, models, and eventually building a complete engine architecture.
 
 > 🚧 **Status: Early Development**
 
@@ -13,35 +15,53 @@ The project is being developed step by step, with a focus on understanding how r
 
 ## 🎯 Vision
 
-The long-term goal of **East Engine** is to build a capable real-time rendering engine that can serve as the foundation for both **games** and **interactive visualizations**.
+The long-term goal of East Engine is to become a capable real-time rendering engine that can serve as a foundation for:
 
-The project is built from the ground up rather than relying on an existing game engine, providing an opportunity to explore the systems behind real-time graphics and engine development.
+- 🎮 Games
+- 📊 Interactive visualizations
+- 🧪 Simulations
+- 🖥️ Graphics applications
 
-### Main Applications
+Rather than building on top of an existing game engine, East Engine is being developed **from the ground up**.
 
-**🎮 Games**
-
-East Engine will provide the core rendering and engine systems required to build real-time games.
-
-**📊 Visualizations**
-
-The engine will also support interactive real-time visualizations, simulations, and other graphics-intensive applications.
+This allows each system to be implemented and understood individually, from the lowest-level rendering concepts to higher-level engine architecture.
 
 ---
 
-## 🛠️ Technologies
+## ✨ Features
 
-- **Rust** — Core programming language
-- **wgpu** — Graphics API abstraction and GPU rendering
-- **winit** — Window creation and event handling
-- **WGSL** — GPU shader programming
-- **bytemuck** — Safe conversion between Rust data and GPU-compatible data
+### Rendering
+
+- Window creation
+- GPU initialization
+- WGPU rendering pipeline
+- Vertex and index buffers
+- Triangle rendering
+- Multiple object rendering
+- Object movement
+- Texture rendering
+- Circle rendering
+- Text rendering
+- Fullscreen support
+
+### Input
+
+- Keyboard input
+- WASD movement
+- Adjustable movement speed
+- Escape key window exit
+
+### Assets
+
+- PNG/JPG texture loading
+- TTF font loading
+- Font rasterization
 
 ---
 
 ## 🚀 Current Progress
 
-The engine is being developed incrementally.
+East Engine is being developed incrementally, with new systems added as the project progresses.
 
 ### Rendering
 
@@ -50,49 +70,86 @@ The engine is being developed incrementally.
 - [x] Rendering pipeline
 - [x] Triangle rendering
 - [x] Triangle movement
-- [x] Texture rendering
-- [x] Fullscreen toggle
 - [x] Multiple object rendering
-- [x] ESC key closes the window
-- [x] Circle Rendering
+- [x] Texture rendering
+- [x] Circle rendering
 - [x] Text rendering
+- [x] Fullscreen toggle
 
-### In Progress
+### Input
 
+- [x] Keyboard input
+- [x] WASD movement
+- [x] Movement speed control
+- [x] ESC key closes the window
+
+### Assets
+
+- [x] PNG/JPG texture loading
+- [x] TTF font loading
+- [x] Font rasterization
+
+### Upcoming
+
+- [ ] Improved text rendering API
+- [ ] Sprite system
+- [ ] Camera system
+- [ ] Entity/GameObject system
+- [ ] Asset manager
 - [ ] 3D model rendering
+- [ ] 3D rendering pipeline
+- [ ] More engine systems
 
-More features will be added as development continues.
+---
+
+## 🛠️ Technologies
+
+| Technology | Purpose |
+|------------|---------|
+| **Rust** | Core programming language |
+| **wgpu** | GPU abstraction and rendering |
+| **winit** | Window creation and event handling |
+| **WGSL** | GPU shader programming |
+| **fontdue** | Font loading and glyph rasterization |
+| **bytemuck** | Conversion between Rust data and GPU-compatible data |
 
 ---
 
 ## 🧠 What I'm Learning
 
-East Engine is also a learning project focused on understanding the foundations of real-time rendering and engine development.
+East Engine is both a rendering engine and a learning project.
 
-Through the project, I'm learning and implementing:
+While developing the engine, I'm learning about:
 
 - Graphics programming
-- GPU architecture and rendering
+- GPU architecture
 - Rendering pipelines
-- Shader programming
+- GPU buffers
 - Vertex and index buffers
+- Shaders
+- WGSL
 - Textures and samplers
-- 2D and 3D rendering
+- Font rendering
+- 2D rendering
+- 3D rendering
+- Graphics mathematics
+- Coordinate systems
+- Transformations
 - Input handling
-- Mathematics for graphics
 - Memory management
-- Game engine architecture
 - Rust programming
-- Real-time rendering techniques
+- Real-time rendering
+- Game engine architecture
+- GPU programming with CUDA
 - And much more
 
 ---
 
 ## 🏗️ Development Philosophy
 
-East Engine is being built **from the ground up**, one system at a time.
+East Engine is built **from the ground up, one system at a time**.
 
-Instead of trying to build everything at once, the engine is developed incrementally:
+The development process focuses on understanding each layer before moving to the next.
 
 ```text
 Window
@@ -101,30 +158,20 @@ GPU
    ↓
 Rendering Pipeline
    ↓
+Shaders
+   ↓
 Geometry
    ↓
 Textures
+   ↓
+Text
+   ↓
+Sprites
+   ↓
+Camera
    ↓
 Objects
    ↓
 Models
    ↓
 Engine Systems
-
-Each feature is an opportunity to understand what is happening underneath the abstraction.
-
----
-
-📂 Project Structure
-
-The project structure will continue to evolve as new engine systems are introduced.
-
-```text
-East-Engine/
-├── src/
-│   ├── ...
-│   └── ...
-├── shaders/
-│   └── ...
-├── Cargo.toml
-└── README.md
