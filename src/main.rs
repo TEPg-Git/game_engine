@@ -1,5 +1,5 @@
 // ============================================================
-// EAST ENGINE v0.2
+// EAST ENGINE v0.3
 // WGPU + WINIT
 //
 // Features:
@@ -70,6 +70,8 @@ impl Vertex {
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct Uniforms {
     position: [f32; 2],
+    _padding: [f32; 2],
+    color: [f32; 4],
 }
 
 // ============================================================
@@ -381,11 +383,11 @@ impl App {
         // ----------------------------------------------------
 
         if self.keyboard.i {
-            self.speed += 0.001;
+            self.speed += 0.0001;
         }
 
         if self.keyboard.o {
-            self.speed -= 0.001;
+            self.speed -= 0.0001;
         }
 
         self.speed = self.speed.max(0.0001);
@@ -522,6 +524,8 @@ impl App {
 
         let uniforms = Uniforms {
             position: self.position,
+            _padding: [0.0, 0.0],
+            color: [1.0, 0.0, 0.0, 1.0],
         };
 
         queue.write_buffer(uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
@@ -535,7 +539,31 @@ impl App {
 
             wgpu::CurrentSurfaceTexture::Suboptimal(output) => output,
 
-            _ => {
+            wgpu::CurrentSurfaceTexture::Outdated => {
+                if let (Some(device), Some(config)) = (&self.device, &self.config) {
+                    surface.configure(device, config);
+                }
+
+                return;
+            }
+
+            wgpu::CurrentSurfaceTexture::Lost => {
+                if let (Some(device), Some(config)) = (&self.device, &self.config) {
+                    surface.configure(device, config);
+                }
+
+                return;
+            }
+
+            wgpu::CurrentSurfaceTexture::Timeout => {
+                return;
+            }
+
+            wgpu::CurrentSurfaceTexture::Occluded => {
+                return;
+            }
+
+            wgpu::CurrentSurfaceTexture::Validation => {
                 return;
             }
         };
@@ -725,6 +753,8 @@ impl ApplicationHandler for App {
 
         let uniforms = Uniforms {
             position: [0.0, 0.0],
+            _padding: [0.0, 0.0],
+            color: [1.0, 0.0, 0.0, 1.0],
         };
 
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -748,7 +778,7 @@ impl ApplicationHandler for App {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
 
-                    visibility: wgpu::ShaderStages::VERTEX,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
 
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
@@ -790,7 +820,7 @@ impl ApplicationHandler for App {
 
         let text = "Hello East Engine";
 
-        let font_size = 48.0;
+        let font_size = 24.0;
 
         println!("Rendering text: {}", text);
 
@@ -982,56 +1012,54 @@ impl ApplicationHandler for App {
         println!("Text bind group created!");
 
         // ====================================================
+        // TEXT SIZE IN SCREEN SPACE
+        // ====================================================
+
+        let screen_width = size.width as f32;
+        let screen_height = size.height as f32;
+
+        // Convert pixels to NDC coordinates
+        let text_width_ndc = (text_width as f32 / screen_width) * 2.0;
+
+        let text_height_ndc = (text_height as f32 / screen_height) * 2.0;
+
+        // Half dimensions
+        let half_width = text_width_ndc / 2.0;
+        let half_height = text_height_ndc / 2.0;
+
+        // ====================================================
         // TEXT QUAD
         // ====================================================
 
         let text_vertices = [
-            // -----------------------------------------------
             // TOP LEFT
-            // -----------------------------------------------
             Vertex {
-                position: [-0.8, 0.15],
-
+                position: [-half_width, half_height],
                 tex_coords: [0.0, 0.0],
             },
-            // -----------------------------------------------
             // TOP RIGHT
-            // -----------------------------------------------
             Vertex {
-                position: [0.8, 0.15],
-
+                position: [half_width, half_height],
                 tex_coords: [1.0, 0.0],
             },
-            // -----------------------------------------------
             // BOTTOM LEFT
-            // -----------------------------------------------
             Vertex {
-                position: [-0.8, -0.15],
-
+                position: [-half_width, -half_height],
                 tex_coords: [0.0, 1.0],
             },
-            // -----------------------------------------------
             // TOP RIGHT
-            // -----------------------------------------------
             Vertex {
-                position: [0.8, 0.15],
-
+                position: [half_width, half_height],
                 tex_coords: [1.0, 0.0],
             },
-            // -----------------------------------------------
             // BOTTOM RIGHT
-            // -----------------------------------------------
             Vertex {
-                position: [0.8, -0.15],
-
+                position: [half_width, -half_height],
                 tex_coords: [1.0, 1.0],
             },
-            // -----------------------------------------------
             // BOTTOM LEFT
-            // -----------------------------------------------
             Vertex {
-                position: [-0.8, -0.15],
-
+                position: [-half_width, -half_height],
                 tex_coords: [0.0, 1.0],
             },
         ];
@@ -1200,7 +1228,7 @@ impl ApplicationHandler for App {
 
         println!("================================");
 
-        println!("East Engine v0.2 initialized!");
+        println!("East Engine v0.3 initialized!");
 
         println!("Text rendering enabled");
 
@@ -1267,9 +1295,8 @@ impl ApplicationHandler for App {
                     if key_code == KeyCode::Escape {
                         if pressed {
                             println!("Escape pressed");
+                            event_loop.exit();
                         }
-
-                        event_loop.exit();
 
                         return;
                     }

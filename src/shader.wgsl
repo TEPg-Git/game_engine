@@ -1,4 +1,11 @@
-//Shader WGSL
+struct Uniforms {
+    position: vec2<f32>,
+    color: vec4<f32>,
+};
+
+@group(0) @binding(0)
+var<uniform> uniforms: Uniforms;
+
 struct VertexInput {
     @location(0)
     position: vec2<f32>,
@@ -15,49 +22,37 @@ struct VertexOutput {
     tex_coords: vec2<f32>,
 };
 
-struct Uniforms {
-    position: vec2<f32>,
-};
-
-@group(0)
-@binding(0)
-var<uniform> uniforms: Uniforms;
-
-@group(1)
-@binding(0)
-var texture_data: texture_2d<f32>;
-
-@group(1)
-@binding(1)
-var texture_sampler: sampler;
-
 @vertex
-fn vs_main(
-    input: VertexInput
-) -> VertexOutput {
-
+fn vs_main(vertex: VertexInput) -> VertexOutput {
     var output: VertexOutput;
 
     output.position = vec4<f32>(
-        input.position.x + uniforms.position.x,
-        input.position.y + uniforms.position.y,
+        vertex.position + uniforms.position,
         0.0,
         1.0
     );
 
-    output.tex_coords = input.tex_coords;
+    output.tex_coords = vertex.tex_coords;
 
     return output;
 }
 
-@fragment
-fn fs_main(
-    input: VertexOutput
-) -> @location(0) vec4<f32> {
+@group(1) @binding(0)
+var text_texture: texture_2d<f32>;
 
-    return textureSample(
-        texture_data,
-        texture_sampler,
-        input.tex_coords
+@group(1) @binding(1)
+var text_sampler: sampler;
+
+@fragment
+fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
+    let texture_color = textureSample(
+        text_texture,
+        text_sampler,
+        vertex.tex_coords
+    );
+
+    return vec4<f32>(
+        uniforms.color.rgb,
+        texture_color.a
     );
 }
