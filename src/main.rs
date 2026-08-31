@@ -1,17 +1,18 @@
 // ============================================================
-// GAME ENGINE v0.2
+// EAST ENGINE v0.2
 // WGPU + WINIT
 //
 // Features:
 // - WASD movement
 // - I/O speed control
-// - Triangle rendering
-// - PNG/JPG texture rendering
-// - Full_Screen feature
+// - Fullscreen
+// - TTF font loading
+// - String rendering using fontdue
 // ============================================================
 
 use std::sync::Arc;
 
+use fontdue::Font;
 use wgpu::util::DeviceExt;
 
 use winit::{
@@ -21,24 +22,16 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
     window::{Window, WindowId},
 };
-//Text Rendering
-use fontdue::Font;
 
-const FONT_DATA: &[u8] =
-    include_bytes!("../assets/Roboto-VariableFont_wdth,wght.ttf");
+// ============================================================
+// FONT
+// ============================================================
+
+const FONT_DATA: &[u8] = include_bytes!("../assets/Roboto-VariableFont_wdth,wght.ttf");
 
 fn load_font() -> Font {
-    Font::from_bytes(FONT_DATA, fontdue::FontSettings::default())
-        .expect("Failed to load font")
+    Font::from_bytes(FONT_DATA, fontdue::FontSettings::default()).expect("Failed to load font")
 }
-
-// ============================================================
-// TEXTURE MODULE
-// ============================================================
-
-mod texture;
-
-use texture::Texture;
 
 // ============================================================
 // VERTEX
@@ -80,7 +73,7 @@ struct Uniforms {
 }
 
 // ============================================================
-// KEYBOARD STATE
+// KEYBOARD
 // ============================================================
 
 #[derive(Default)]
@@ -92,6 +85,125 @@ struct KeyboardState {
 
     i: bool,
     o: bool,
+}
+
+// ============================================================
+// TEXT BITMAP
+// ============================================================
+
+fn create_text_bitmap(font: &Font, text: &str, font_size: f32) -> (Vec<u8>, u32, u32) {
+    // --------------------------------------------------------
+    // STORE GLYPHS
+    // --------------------------------------------------------
+
+    let mut glyphs = Vec::new();
+
+    // --------------------------------------------------------
+    // CALCULATE TOTAL WIDTH
+    // --------------------------------------------------------
+
+    let mut total_width = 0usize;
+
+    let mut max_height = 0usize;
+
+    for character in text.chars() {
+        let (metrics, bitmap) = font.rasterize(character, font_size);
+
+        // --------------------------------------------
+        // Character width
+        // --------------------------------------------
+
+        let character_width = if character == ' ' {
+            // Give spaces some visible width
+            (font_size * 0.30) as usize
+        } else {
+            metrics.width
+        };
+
+        total_width += character_width;
+
+        max_height = max_height.max(metrics.height);
+
+        glyphs.push((character, metrics, bitmap));
+    }
+
+    // --------------------------------------------------------
+    // MAKE SURE TEXTURE IS NOT ZERO-SIZED
+    // --------------------------------------------------------
+
+    if total_width == 0 {
+        total_width = 1;
+    }
+
+    if max_height == 0 {
+        max_height = 1;
+    }
+
+    // --------------------------------------------------------
+    // RGBA BUFFER
+    // --------------------------------------------------------
+
+    let mut rgba_data = vec![0u8; total_width * max_height * 4];
+
+    // --------------------------------------------------------
+    // CURRENT X POSITION
+    // --------------------------------------------------------
+
+    let mut x_offset = 0usize;
+
+    // --------------------------------------------------------
+    // COPY GLYPHS
+    // --------------------------------------------------------
+
+    for (character, metrics, bitmap) in glyphs {
+        // ----------------------------------------------------
+        // SPACE
+        // ----------------------------------------------------
+
+        if character == ' ' {
+            x_offset += (font_size * 0.30) as usize;
+
+            continue;
+        }
+
+        // ----------------------------------------------------
+        // COPY BITMAP
+        // ----------------------------------------------------
+
+        for y in 0..metrics.height {
+            for x in 0..metrics.width {
+                let source_index = y * metrics.width + x;
+
+                let destination_index = (y * total_width + x_offset + x) * 4;
+
+                let alpha = bitmap[source_index];
+
+                // --------------------------------------------
+                // WHITE
+                // --------------------------------------------
+
+                rgba_data[destination_index] = 255;
+
+                rgba_data[destination_index + 1] = 255;
+
+                rgba_data[destination_index + 2] = 255;
+
+                // --------------------------------------------
+                // FONT BITMAP = ALPHA
+                // --------------------------------------------
+
+                rgba_data[destination_index + 3] = alpha;
+            }
+        }
+
+        // ----------------------------------------------------
+        // MOVE TO NEXT CHARACTER
+        // ----------------------------------------------------
+
+        x_offset += metrics.width;
+    }
+
+    (rgba_data, total_width as u32, max_height as u32)
 }
 
 // ============================================================
@@ -116,26 +228,25 @@ struct App {
     config: Option<wgpu::SurfaceConfiguration>,
 
     // --------------------------------------------------------
-    // GPU BUFFERS
+    // UNIFORM
     // --------------------------------------------------------
-    vertex_buffer: Option<wgpu::Buffer>,
-
     uniform_buffer: Option<wgpu::Buffer>,
 
-    // --------------------------------------------------------
-    // BIND GROUPS
-    // --------------------------------------------------------
     uniform_bind_group: Option<wgpu::BindGroup>,
 
-    texture_bind_group: Option<wgpu::BindGroup>,
+    // --------------------------------------------------------
+    // TEXT
+    // --------------------------------------------------------
+    text_texture: Option<wgpu::Texture>,
+
+    text_bind_group: Option<wgpu::BindGroup>,
+
+    text_vertex_buffer: Option<wgpu::Buffer>,
+
+    text_vertex_count: u32,
 
     // --------------------------------------------------------
-    // TEXTURE
-    // --------------------------------------------------------
-    texture: Option<Texture>,
-
-    // --------------------------------------------------------
-    // RENDER PIPELINE
+    // PIPELINE
     // --------------------------------------------------------
     render_pipeline: Option<wgpu::RenderPipeline>,
 
@@ -147,59 +258,23 @@ struct App {
     position: [f32; 2],
 
     speed: f32,
-
-    vertex_count: u32,
 }
 
 // ============================================================
-// CIRCLE
-// ============================================================
-
-fn create_circle_vertices(segments: u32, radius: f32) -> Vec<Vertex> {
-    let mut vertices = Vec::new();
-
-    for i in 0..segments {
-        let angle1 = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
-
-        let angle2 = 2.0 * std::f32::consts::PI * (i + 1) as f32 / segments as f32;
-
-        let x1 = radius * angle1.cos();
-        let y1 = radius * angle1.sin();
-
-        let x2 = radius * angle2.cos();
-        let y2 = radius * angle2.sin();
-
-        // Center
-        vertices.push(Vertex {
-            position: [0.0, 0.0],
-            tex_coords: [0.5, 0.5],
-        });
-
-        // First outer point
-        vertices.push(Vertex {
-            position: [x1, y1],
-            tex_coords: [0.5 + x1 / (2.0 * radius), 0.5 + y1 / (2.0 * radius)],
-        });
-
-        // Second outer point
-        vertices.push(Vertex {
-            position: [x2, y2],
-            tex_coords: [0.5 + x2 / (2.0 * radius), 0.5 + y2 / (2.0 * radius)],
-        });
-    }
-
-    vertices
-}
-
-// ============================================================
-// APP IMPLEMENTATION
+// APP
 // ============================================================
 
 impl App {
     fn new() -> Self {
         Self {
+            // ------------------------------------------------
+            // WINDOW
+            // ------------------------------------------------
             window: None,
 
+            // ------------------------------------------------
+            // WGPU
+            // ------------------------------------------------
             surface: None,
 
             device: None,
@@ -208,30 +283,42 @@ impl App {
 
             config: None,
 
-            vertex_buffer: None,
-
+            // ------------------------------------------------
+            // UNIFORM
+            // ------------------------------------------------
             uniform_buffer: None,
 
             uniform_bind_group: None,
 
-            texture_bind_group: None,
+            // ------------------------------------------------
+            // TEXT
+            // ------------------------------------------------
+            text_texture: None,
 
-            texture: None,
+            text_bind_group: None,
 
+            text_vertex_buffer: None,
+
+            text_vertex_count: 0,
+
+            // ------------------------------------------------
+            // PIPELINE
+            // ------------------------------------------------
             render_pipeline: None,
 
+            // ------------------------------------------------
+            // GAME STATE
+            // ------------------------------------------------
             keyboard: KeyboardState::default(),
 
             position: [0.0, 0.0],
 
             speed: 0.001,
-
-            vertex_count: 0,
         }
     }
 
     // ========================================================
-    // KEYBOARD INPUT
+    // KEYBOARD
     // ========================================================
 
     fn handle_keyboard(&mut self, key_code: KeyCode, pressed: bool) {
@@ -270,61 +357,41 @@ impl App {
 
     fn update(&mut self) {
         // ----------------------------------------------------
-        // MOVE UP
+        // MOVEMENT
         // ----------------------------------------------------
 
         if self.keyboard.w {
             self.position[1] += self.speed;
         }
 
-        // ----------------------------------------------------
-        // MOVE DOWN
-        // ----------------------------------------------------
-
         if self.keyboard.s {
             self.position[1] -= self.speed;
         }
 
-        // ----------------------------------------------------
-        // MOVE LEFT
-        // ----------------------------------------------------
-
         if self.keyboard.a {
             self.position[0] -= self.speed;
         }
-
-        // ----------------------------------------------------
-        // MOVE RIGHT
-        // ----------------------------------------------------
 
         if self.keyboard.d {
             self.position[0] += self.speed;
         }
 
         // ----------------------------------------------------
-        // INCREASE SPEED
+        // SPEED
         // ----------------------------------------------------
 
         if self.keyboard.i {
             self.speed += 0.001;
         }
 
-        // ----------------------------------------------------
-        // DECREASE SPEED
-        // ----------------------------------------------------
-
         if self.keyboard.o {
             self.speed -= 0.001;
         }
 
-        // ----------------------------------------------------
-        // PREVENT NEGATIVE SPEED
-        // ----------------------------------------------------
-
         self.speed = self.speed.max(0.0001);
 
         // ----------------------------------------------------
-        // KEEP OBJECT INSIDE SCREEN
+        // SCREEN LIMIT
         // ----------------------------------------------------
 
         self.position[0] = self.position[0].clamp(-1.0, 1.0);
@@ -332,27 +399,60 @@ impl App {
         self.position[1] = self.position[1].clamp(-1.0, 1.0);
     }
 
+    // ========================================================
+    // FULLSCREEN
+    // ========================================================
+
     fn toggle_fullscreen(&mut self) {
         if let Some(window) = &self.window {
             if window.fullscreen().is_some() {
-                // --------------------------------------------
-                // RETURN TO WINDOWED MODE
-                // --------------------------------------------
-
                 window.set_fullscreen(None);
 
                 println!("Fullscreen: OFF");
             } else {
-                // --------------------------------------------
-                // ENTER FULLSCREEN
-                // --------------------------------------------
-
                 window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(None)));
 
                 println!("Fullscreen: ON");
             }
         }
     }
+
+    // ========================================================
+    // RESIZE
+    // ========================================================
+
+    fn resize(&mut self, width: u32, height: u32) {
+        if width == 0 || height == 0 {
+            return;
+        }
+
+        let surface = match &self.surface {
+            Some(surface) => surface,
+
+            None => return,
+        };
+
+        let device = match &self.device {
+            Some(device) => device,
+
+            None => return,
+        };
+
+        let config = match &mut self.config {
+            Some(config) => config,
+
+            None => return,
+        };
+
+        config.width = width;
+
+        config.height = height;
+
+        surface.configure(device, config);
+
+        println!("Resized to {}x{}", width, height);
+    }
+
     // ========================================================
     // RENDER
     // ========================================================
@@ -365,51 +465,59 @@ impl App {
         self.update();
 
         // ----------------------------------------------------
-        // GET WGPU OBJECTS
+        // GET GPU OBJECTS
         // ----------------------------------------------------
 
         let surface = match &self.surface {
             Some(surface) => surface,
+
             None => return,
         };
 
         let device = match &self.device {
             Some(device) => device,
+
             None => return,
         };
 
         let queue = match &self.queue {
             Some(queue) => queue,
-            None => return,
-        };
 
-        let vertex_buffer = match &self.vertex_buffer {
-            Some(buffer) => buffer,
             None => return,
         };
 
         let uniform_buffer = match &self.uniform_buffer {
             Some(buffer) => buffer,
+
             None => return,
         };
 
         let uniform_bind_group = match &self.uniform_bind_group {
             Some(bind_group) => bind_group,
+
             None => return,
         };
 
-        let texture_bind_group = match &self.texture_bind_group {
+        let text_bind_group = match &self.text_bind_group {
             Some(bind_group) => bind_group,
+
+            None => return,
+        };
+
+        let text_vertex_buffer = match &self.text_vertex_buffer {
+            Some(buffer) => buffer,
+
             None => return,
         };
 
         let render_pipeline = match &self.render_pipeline {
             Some(pipeline) => pipeline,
+
             None => return,
         };
 
         // ----------------------------------------------------
-        // UPDATE UNIFORM
+        // UPDATE POSITION
         // ----------------------------------------------------
 
         let uniforms = Uniforms {
@@ -433,7 +541,7 @@ impl App {
         };
 
         // ----------------------------------------------------
-        // CREATE VIEW
+        // VIEW
         // ----------------------------------------------------
 
         let view = output
@@ -445,16 +553,16 @@ impl App {
         // ----------------------------------------------------
 
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
+            label: Some("Text Render Encoder"),
         });
 
-        // ----------------------------------------------------
+        // ====================================================
         // RENDER PASS
-        // ----------------------------------------------------
+        // ====================================================
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
+                label: Some("Text Render Pass"),
 
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
@@ -500,19 +608,19 @@ impl App {
             // TEXTURE
             // ------------------------------------------------
 
-            render_pass.set_bind_group(1, texture_bind_group, &[]);
+            render_pass.set_bind_group(1, text_bind_group, &[]);
 
             // ------------------------------------------------
-            // VERTICES
+            // TEXT QUAD
             // ------------------------------------------------
 
-            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            render_pass.set_vertex_buffer(0, text_vertex_buffer.slice(..));
 
             // ------------------------------------------------
             // DRAW
             // ------------------------------------------------
 
-            render_pass.draw(0..self.vertex_count, 0..1);
+            render_pass.draw(0..self.text_vertex_count, 0..1);
         }
 
         // ----------------------------------------------------
@@ -527,39 +635,6 @@ impl App {
 
         queue.present(output);
     }
-
-    // ========================================================
-    // RESIZE
-    // ========================================================
-
-    fn resize(&mut self, width: u32, height: u32) {
-        if width == 0 || height == 0 {
-            return;
-        }
-
-        let surface = match &self.surface {
-            Some(surface) => surface,
-            None => return,
-        };
-
-        let device = match &self.device {
-            Some(device) => device,
-            None => return,
-        };
-
-        let config = match &mut self.config {
-            Some(config) => config,
-            None => return,
-        };
-
-        config.width = width;
-
-        config.height = height;
-
-        surface.configure(device, config);
-
-        println!("Resized to {}x{}", width, height);
-    }
 }
 
 // ============================================================
@@ -572,29 +647,29 @@ impl ApplicationHandler for App {
     // ========================================================
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        // ----------------------------------------------------
+        // ====================================================
         // WINDOW
-        // ----------------------------------------------------
+        // ====================================================
 
-        let window_attributes = Window::default_attributes().with_title("My Game Engine v0.2");
+        let window_attributes = Window::default_attributes().with_title("East Engine");
 
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
-        // ----------------------------------------------------
+        // ====================================================
         // WGPU INSTANCE
-        // ----------------------------------------------------
+        // ====================================================
 
         let instance = wgpu::Instance::default();
 
-        // ----------------------------------------------------
+        // ====================================================
         // SURFACE
-        // ----------------------------------------------------
+        // ====================================================
 
         let surface = instance.create_surface(window.clone()).unwrap();
 
-        // ----------------------------------------------------
+        // ====================================================
         // ADAPTER
-        // ----------------------------------------------------
+        // ====================================================
 
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::default(),
@@ -605,16 +680,16 @@ impl ApplicationHandler for App {
 
             apply_limit_buckets: false,
         }))
-        .expect("Failed to find a suitable GPU adapter");
+        .expect("Failed to find suitable GPU adapter");
 
         println!("GPU: {:?}", adapter.get_info());
 
-        // ----------------------------------------------------
+        // ====================================================
         // DEVICE + QUEUE
-        // ----------------------------------------------------
+        // ====================================================
 
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("Game Engine Device"),
+            label: Some("East Engine Device"),
 
             required_features: wgpu::Features::empty(),
 
@@ -630,62 +705,27 @@ impl ApplicationHandler for App {
 
         println!("Device created!");
 
-        // ----------------------------------------------------
-        // SURFACE CONFIGURATION
-        // ----------------------------------------------------
+        // ====================================================
+        // SURFACE CONFIG
+        // ====================================================
 
         let size = window.inner_size();
 
-        let mut config = surface
+        let config = surface
             .get_default_config(&adapter, size.width, size.height)
             .expect("Surface is not supported");
-
-        // ----------------------------------------------------
-        // VSYNC
-        // ----------------------------------------------------
-
-        config.present_mode = wgpu::PresentMode::Fifo;
 
         surface.configure(&device, &config);
 
         println!("Surface configured!");
 
         // ====================================================
-        // VERTEX
-        // ====================================================
-
-        let segments = 32;
-        let radius = 0.5;
-
-        let vertices = create_circle_vertices(segments, radius);
-
-        // ----------------------------------------------------
-        // VERTEX BUFFER
-        // ----------------------------------------------------
-
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Circle Vertex Buffer"),
-
-            contents: bytemuck::cast_slice(&vertices),
-
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-
-        self.vertex_count = vertices.len() as u32;
-
-        println!("Vertex buffer created!");
-
-        // ====================================================
-        // UNIFORMS
+        // UNIFORM BUFFER
         // ====================================================
 
         let uniforms = Uniforms {
             position: [0.0, 0.0],
         };
-
-        // ----------------------------------------------------
-        // UNIFORM BUFFER
-        // ----------------------------------------------------
 
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
@@ -737,12 +777,142 @@ impl ApplicationHandler for App {
         println!("Uniform bind group created!");
 
         // ====================================================
-        // LOAD IMAGE
+        // LOAD FONT
         // ====================================================
 
-        let texture = Texture::from_file(&device, &queue, "assets/test.jpg");
+        let font = load_font();
 
-        println!("Texture loaded!");
+        println!("Font loaded successfully!");
+
+        // ====================================================
+        // TEXT
+        // ====================================================
+
+        let text = "Hello East Engine";
+
+        let font_size = 48.0;
+
+        println!("Rendering text: {}", text);
+
+        // ====================================================
+        // CREATE TEXT BITMAP
+        // ====================================================
+
+        let (rgba_data, text_width, text_height) = create_text_bitmap(&font, text, font_size);
+
+        println!("Text size: {}x{}", text_width, text_height);
+
+        // ====================================================
+        // WGPU ROW PADDING
+        // ====================================================
+
+        let unpadded_bytes_per_row = text_width * 4;
+
+        let padded_bytes_per_row = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
+            * ((unpadded_bytes_per_row + wgpu::COPY_BYTES_PER_ROW_ALIGNMENT - 1)
+                / wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+
+        // ----------------------------------------------------
+        // PAD RGBA DATA
+        // ----------------------------------------------------
+
+        let mut padded_data = vec![0u8; (padded_bytes_per_row * text_height) as usize];
+
+        for y in 0..text_height {
+            let source_start = (y * unpadded_bytes_per_row) as usize;
+
+            let source_end = source_start + unpadded_bytes_per_row as usize;
+
+            let destination_start = (y * padded_bytes_per_row) as usize;
+
+            let destination_end = destination_start + unpadded_bytes_per_row as usize;
+
+            padded_data[destination_start..destination_end]
+                .copy_from_slice(&rgba_data[source_start..source_end]);
+        }
+
+        // ====================================================
+        // CREATE TEXTURE
+        // ====================================================
+
+        let text_texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Text Texture"),
+
+            size: wgpu::Extent3d {
+                width: text_width,
+
+                height: text_height,
+
+                depth_or_array_layers: 1,
+            },
+
+            mip_level_count: 1,
+
+            sample_count: 1,
+
+            dimension: wgpu::TextureDimension::D2,
+
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+
+            view_formats: &[],
+        });
+
+        // ====================================================
+        // UPLOAD TEXTURE
+        // ====================================================
+
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &text_texture,
+
+                mip_level: 0,
+
+                origin: wgpu::Origin3d::ZERO,
+
+                aspect: wgpu::TextureAspect::All,
+            },
+            &padded_data,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+
+                bytes_per_row: Some(padded_bytes_per_row),
+
+                rows_per_image: Some(text_height),
+            },
+            wgpu::Extent3d {
+                width: text_width,
+
+                height: text_height,
+
+                depth_or_array_layers: 1,
+            },
+        );
+
+        println!("Text uploaded to GPU!");
+
+        // ====================================================
+        // TEXTURE VIEW
+        // ====================================================
+
+        let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        // ====================================================
+        // SAMPLER
+        // ====================================================
+
+        let text_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("Text Sampler"),
+
+            mag_filter: wgpu::FilterMode::Linear,
+
+            min_filter: wgpu::FilterMode::Linear,
+
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+
+            ..Default::default()
+        });
 
         // ====================================================
         // TEXTURE BIND GROUP LAYOUT
@@ -750,12 +920,12 @@ impl ApplicationHandler for App {
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Texture Bind Group Layout"),
+                label: Some("Text Texture Bind Group Layout"),
 
                 entries: &[
-                    // ------------------------------------
+                    // --------------------------------
                     // TEXTURE
-                    // ------------------------------------
+                    // --------------------------------
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
 
@@ -771,9 +941,9 @@ impl ApplicationHandler for App {
 
                         count: None,
                     },
-                    // ------------------------------------
+                    // --------------------------------
                     // SAMPLER
-                    // ------------------------------------
+                    // --------------------------------
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
 
@@ -787,35 +957,100 @@ impl ApplicationHandler for App {
             });
 
         // ====================================================
-        // TEXTURE BIND GROUP
+        // TEXT BIND GROUP
         // ====================================================
 
-        let texture_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Texture Bind Group"),
+        let text_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Text Bind Group"),
 
             layout: &texture_bind_group_layout,
 
             entries: &[
-                // ------------------------------------
-                // TEXTURE
-                // ------------------------------------
                 wgpu::BindGroupEntry {
                     binding: 0,
 
-                    resource: wgpu::BindingResource::TextureView(&texture.view),
+                    resource: wgpu::BindingResource::TextureView(&text_view),
                 },
-                // ------------------------------------
-                // SAMPLER
-                // ------------------------------------
                 wgpu::BindGroupEntry {
                     binding: 1,
 
-                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
+                    resource: wgpu::BindingResource::Sampler(&text_sampler),
                 },
             ],
         });
 
-        println!("Texture bind group created!");
+        println!("Text bind group created!");
+
+        // ====================================================
+        // TEXT QUAD
+        // ====================================================
+
+        let text_vertices = [
+            // -----------------------------------------------
+            // TOP LEFT
+            // -----------------------------------------------
+            Vertex {
+                position: [-0.8, 0.15],
+
+                tex_coords: [0.0, 0.0],
+            },
+            // -----------------------------------------------
+            // TOP RIGHT
+            // -----------------------------------------------
+            Vertex {
+                position: [0.8, 0.15],
+
+                tex_coords: [1.0, 0.0],
+            },
+            // -----------------------------------------------
+            // BOTTOM LEFT
+            // -----------------------------------------------
+            Vertex {
+                position: [-0.8, -0.15],
+
+                tex_coords: [0.0, 1.0],
+            },
+            // -----------------------------------------------
+            // TOP RIGHT
+            // -----------------------------------------------
+            Vertex {
+                position: [0.8, 0.15],
+
+                tex_coords: [1.0, 0.0],
+            },
+            // -----------------------------------------------
+            // BOTTOM RIGHT
+            // -----------------------------------------------
+            Vertex {
+                position: [0.8, -0.15],
+
+                tex_coords: [1.0, 1.0],
+            },
+            // -----------------------------------------------
+            // BOTTOM LEFT
+            // -----------------------------------------------
+            Vertex {
+                position: [-0.8, -0.15],
+
+                tex_coords: [0.0, 1.0],
+            },
+        ];
+
+        // ====================================================
+        // TEXT VERTEX BUFFER
+        // ====================================================
+
+        let text_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Text Vertex Buffer"),
+
+            contents: bytemuck::cast_slice(&text_vertices),
+
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        let text_vertex_count = text_vertices.len() as u32;
+
+        println!("Text vertex buffer created!");
 
         // ====================================================
         // SHADER
@@ -823,12 +1058,8 @@ impl ApplicationHandler for App {
 
         let shader_source = include_str!("shader.wgsl");
 
-        // ----------------------------------------------------
-        // SHADER MODULE
-        // ----------------------------------------------------
-
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Texture Shader"),
+            label: Some("Text Shader"),
 
             source: wgpu::ShaderSource::Wgsl(shader_source.into()),
         });
@@ -840,7 +1071,7 @@ impl ApplicationHandler for App {
         // ====================================================
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Texture Pipeline Layout"),
+            label: Some("Text Pipeline Layout"),
 
             bind_group_layouts: &[
                 Some(&uniform_bind_group_layout),
@@ -857,7 +1088,7 @@ impl ApplicationHandler for App {
         // ====================================================
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Texture Render Pipeline"),
+            label: Some("Text Render Pipeline"),
 
             layout: Some(&pipeline_layout),
 
@@ -936,7 +1167,7 @@ impl ApplicationHandler for App {
         println!("Render pipeline created!");
 
         // ====================================================
-        // STORE EVERYTHING
+        // STORE RESOURCES
         // ====================================================
 
         self.window = Some(window);
@@ -949,33 +1180,45 @@ impl ApplicationHandler for App {
 
         self.config = Some(config);
 
-        self.vertex_buffer = Some(vertex_buffer);
-
         self.uniform_buffer = Some(uniform_buffer);
 
         self.uniform_bind_group = Some(uniform_bind_group);
 
-        self.texture_bind_group = Some(texture_bind_group);
+        self.text_texture = Some(text_texture);
 
-        self.texture = Some(texture);
+        self.text_bind_group = Some(text_bind_group);
+
+        self.text_vertex_buffer = Some(text_vertex_buffer);
+
+        self.text_vertex_count = text_vertex_count;
 
         self.render_pipeline = Some(render_pipeline);
 
+        // ====================================================
+        // STARTUP
+        // ====================================================
+
         println!("================================");
 
-        println!("Game Engine v0.2 initialized!");
+        println!("East Engine v0.2 initialized!");
+
+        println!("Text rendering enabled");
+
+        println!("Text: {}", text);
 
         println!("WASD = Move");
 
         println!("I/O = Change speed");
 
-        println!("PNG/JPG texture loaded");
+        println!("F = Fullscreen");
+
+        println!("Escape = Exit");
 
         println!("================================");
 
-        // ----------------------------------------------------
-        // FIRST FRAME
-        // ----------------------------------------------------
+        // ====================================================
+        // REQUEST FIRST FRAME
+        // ====================================================
 
         if let Some(window) = &self.window {
             window.request_redraw();
@@ -1017,18 +1260,23 @@ impl ApplicationHandler for App {
                 let pressed = event.state == ElementState::Pressed;
 
                 if let PhysicalKey::Code(key_code) = event.physical_key {
-                    //Escape key closes the loop
+                    // ----------------------------------------
+                    // ESCAPE
+                    // ----------------------------------------
+
                     if key_code == KeyCode::Escape {
                         if pressed {
                             println!("Escape pressed");
                         }
 
                         event_loop.exit();
+
+                        return;
                     }
 
-                    // --------------------------------------------
-                    // F = TOGGLE FULLSCREEN
-                    // --------------------------------------------
+                    // ----------------------------------------
+                    // F = FULLSCREEN
+                    // ----------------------------------------
 
                     if key_code == KeyCode::KeyF && pressed {
                         self.toggle_fullscreen();
@@ -1039,7 +1287,7 @@ impl ApplicationHandler for App {
             }
 
             // ------------------------------------------------
-            // DRAW
+            // REDRAW
             // ------------------------------------------------
             WindowEvent::RedrawRequested => {
                 self.render();
@@ -1064,49 +1312,4 @@ fn main() {
     let mut app = App::new();
 
     event_loop.run_app(&mut app).expect("Event loop failed");
-
-    // ========================================================
-    // TEXT RENDERING TEST
-    // ========================================================
-
-    let font = load_font();
-
-    let (metrics, bitmap) =
-        font.rasterize(
-            'A',
-            48.0,
-        );
-
-    println!("Width: {}", metrics.width);
-
-    println!(
-        "Height: {}",
-        metrics.height
-    );
-
-    println!(
-        "Bitmap size: {}",
-        bitmap.len()
-    );
-
-    // --------------------------------------------------------
-    // PRINT GLYPH AS ASCII ART
-    // --------------------------------------------------------
-
-    for y in 0..metrics.height {
-        for x in 0..metrics.width {
-            let value =
-                bitmap[
-                    y * metrics.width + x
-                ];
-
-            if value > 128 {
-                print!("██");
-            } else {
-                print!("  ");
-            }
-        }
-
-        println!();
-    }
 }

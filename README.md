@@ -55,11 +55,10 @@ The engine is being developed incrementally.
 - [x] Multiple object rendering
 - [x] ESC key closes the window
 - [x] Circle Rendering
+- [x] Text rendering
 
 ### In Progress
 
-- [ ] Independent movement of multiple objects
-- [ ] Text rendering
 - [ ] 3D model rendering
 
 More features will be added as development continues.
