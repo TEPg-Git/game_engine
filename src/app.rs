@@ -361,63 +361,11 @@ impl ApplicationHandler for App {
         // WGPU INSTANCE
         // ====================================================
 
-        let instance = wgpu::Instance::default();
+        let renderer = Renderer::new(window.clone());
 
-        // ====================================================
-        // SURFACE
-        // ====================================================
-
-        let surface = instance.create_surface(window.clone()).unwrap();
-
-        // ====================================================
-        // ADAPTER
-        // ====================================================
-
-        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::default(),
-
-            force_fallback_adapter: false,
-
-            compatible_surface: Some(&surface),
-
-            apply_limit_buckets: false,
-        }))
-        .expect("Failed to find suitable GPU adapter");
-
-        println!("GPU: {:?}", adapter.get_info());
-
-        // ====================================================
-        // DEVICE + QUEUE
-        // ====================================================
-
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("East Engine Device"),
-
-            required_features: wgpu::Features::empty(),
-
-            required_limits: wgpu::Limits::default(),
-
-            experimental_features: wgpu::ExperimentalFeatures::disabled(),
-
-            memory_hints: wgpu::MemoryHints::default(),
-
-            trace: wgpu::Trace::Off,
-        }))
-        .expect("Failed to create GPU device");
-
-        println!("Device created!");
-
-        // ====================================================
-        // SURFACE CONFIG
-        // ====================================================
-
-        let size = window.inner_size();
-
-        let config = surface
-            .get_default_config(&adapter, size.width, size.height)
-            .expect("Surface is not supported");
-
-        surface.configure(&device, &config);
+        let device = &renderer.device;
+        let queue = &renderer.queue;
+        let config = &renderer.config;
 
         println!("Surface configured!");
 
@@ -688,6 +636,7 @@ impl ApplicationHandler for App {
         // ====================================================
         // TEXT SIZE IN SCREEN SPACE
         // ====================================================
+        let size = window.inner_size();
 
         let screen_width = size.width as f32;
 
@@ -884,12 +833,7 @@ impl ApplicationHandler for App {
 
         self.window = Some(window);
 
-        self.renderer = Some(Renderer {
-            surface,
-            device,
-            queue,
-            config,
-        });
+        self.renderer = Some(renderer);
 
         self.uniform_buffer = Some(uniform_buffer);
 
