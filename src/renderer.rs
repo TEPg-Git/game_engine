@@ -1,12 +1,20 @@
+use wgpu::util::DeviceExt;
+
+use crate::graphics::Uniforms;
+
 use std::sync::Arc;
 
 use winit::window::Window;
 
 pub struct Renderer {
+    //WGPU
     pub surface: wgpu::Surface<'static>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
+    // UNIFORM
+    pub uniform_buffer: wgpu::Buffer,
+    pub uniform_bind_group: wgpu::BindGroup,
 }
 
 impl Renderer {
@@ -74,6 +82,64 @@ impl Renderer {
         surface.configure(&device, &config);
 
         println!("Surface configured!");
+        // ====================================================
+        // UNIFORM BUFFER
+        // ====================================================
+
+        let uniforms = Uniforms {
+            position: [0.0, 0.0],
+            _padding: [0.0, 0.0],
+            color: [1.0, 0.0, 0.0, 1.0],
+        };
+
+        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Uniform Buffer"),
+
+            contents: bytemuck::bytes_of(&uniforms),
+
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        println!("Uniform buffer created!");
+
+        // ====================================================
+        // UNIFORM BIND GROUP
+        // ====================================================
+
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Uniform Bind Group Layout"),
+
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+
+                        has_dynamic_offset: false,
+
+                        min_binding_size: None,
+                    },
+
+                    count: None,
+                }],
+            });
+
+        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Uniform Bind Group"),
+
+            layout: &uniform_bind_group_layout,
+
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+
+                resource: uniform_buffer.as_entire_binding(),
+            }],
+        });
+
+        println!("Uniform bind group created!");
 
         // ====================================================
         // CREATE RENDERER
@@ -84,6 +150,8 @@ impl Renderer {
             device,
             queue,
             config,
+            uniform_buffer,
+            uniform_bind_group,
         }
     }
 }

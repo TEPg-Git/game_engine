@@ -30,13 +30,6 @@ pub struct App {
     renderer: Option<Renderer>,
 
     // --------------------------------------------------------
-    // UNIFORM
-    // --------------------------------------------------------
-    uniform_buffer: Option<wgpu::Buffer>,
-
-    uniform_bind_group: Option<wgpu::BindGroup>,
-
-    // --------------------------------------------------------
     // TEXT
     // --------------------------------------------------------
     text_texture: Option<wgpu::Texture>,
@@ -74,13 +67,6 @@ impl App {
             // WGPU
             // ------------------------------------------------
             renderer: None,
-
-            // ------------------------------------------------
-            // UNIFORM
-            // ------------------------------------------------
-            uniform_buffer: None,
-
-            uniform_bind_group: None,
 
             // ------------------------------------------------
             // TEXT
@@ -171,15 +157,8 @@ impl App {
         let device = &renderer.device;
         let queue = &renderer.queue;
 
-        let uniform_buffer = match &self.uniform_buffer {
-            Some(buffer) => buffer,
-            None => return,
-        };
-
-        let uniform_bind_group = match &self.uniform_bind_group {
-            Some(bind_group) => bind_group,
-            None => return,
-        };
+        let uniform_buffer = &renderer.uniform_buffer;
+        let uniform_bind_group = &renderer.uniform_bind_group;
 
         let text_bind_group = match &self.text_bind_group {
             Some(bind_group) => bind_group,
@@ -368,65 +347,6 @@ impl ApplicationHandler for App {
         let config = &renderer.config;
 
         println!("Surface configured!");
-
-        // ====================================================
-        // UNIFORM BUFFER
-        // ====================================================
-
-        let uniforms = Uniforms {
-            position: [0.0, 0.0],
-            _padding: [0.0, 0.0],
-            color: [1.0, 0.0, 0.0, 1.0],
-        };
-
-        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Uniform Buffer"),
-
-            contents: bytemuck::bytes_of(&uniforms),
-
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        println!("Uniform buffer created!");
-
-        // ====================================================
-        // UNIFORM BIND GROUP
-        // ====================================================
-
-        let uniform_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Uniform Bind Group Layout"),
-
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-
-                        has_dynamic_offset: false,
-
-                        min_binding_size: None,
-                    },
-
-                    count: None,
-                }],
-            });
-
-        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Uniform Bind Group"),
-
-            layout: &uniform_bind_group_layout,
-
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-
-                resource: uniform_buffer.as_entire_binding(),
-            }],
-        });
-
-        println!("Uniform bind group created!");
 
         // ====================================================
         // LOAD FONT
@@ -727,6 +647,26 @@ impl ApplicationHandler for App {
 
         println!("Shader created!");
 
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Uniform Bind Group Layout"),
+
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+
+                        has_dynamic_offset: false,
+
+                        min_binding_size: None,
+                    },
+
+                    count: None,
+                }],
+            });
         // ====================================================
         // PIPELINE LAYOUT
         // ====================================================
@@ -834,10 +774,6 @@ impl ApplicationHandler for App {
         self.window = Some(window);
 
         self.renderer = Some(renderer);
-
-        self.uniform_buffer = Some(uniform_buffer);
-
-        self.uniform_bind_group = Some(uniform_bind_group);
 
         self.text_texture = Some(text_texture);
 
