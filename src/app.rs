@@ -1,3 +1,5 @@
+use crate::state::GameState;
+
 use std::sync::Arc;
 
 use wgpu::util::DeviceExt;
@@ -11,7 +13,6 @@ use winit::{
 };
 
 use crate::graphics::{Uniforms, Vertex};
-use crate::input::KeyboardState;
 use crate::text::{create_text_bitmap, load_font};
 // ============================================================
 // APP
@@ -60,11 +61,7 @@ pub struct App {
     // --------------------------------------------------------
     // GAME STATE
     // --------------------------------------------------------
-    keyboard: KeyboardState,
-
-    position: [f32; 2],
-
-    speed: f32,
+    game_state: GameState,
 }
 
 // ============================================================
@@ -116,60 +113,8 @@ impl App {
             // ------------------------------------------------
             // GAME STATE
             // ------------------------------------------------
-            keyboard: KeyboardState::default(),
-
-            position: [0.0, 0.0],
-
-            speed: 0.001,
+            game_state: GameState::new(),
         }
-    }
-
-    // ========================================================
-    // UPDATE
-    // ========================================================
-
-    fn update(&mut self) {
-        // ----------------------------------------------------
-        // MOVEMENT
-        // ----------------------------------------------------
-
-        if self.keyboard.w {
-            self.position[1] += self.speed;
-        }
-
-        if self.keyboard.s {
-            self.position[1] -= self.speed;
-        }
-
-        if self.keyboard.a {
-            self.position[0] -= self.speed;
-        }
-
-        if self.keyboard.d {
-            self.position[0] += self.speed;
-        }
-
-        // ----------------------------------------------------
-        // SPEED
-        // ----------------------------------------------------
-
-        if self.keyboard.i {
-            self.speed += 0.0001;
-        }
-
-        if self.keyboard.o {
-            self.speed -= 0.0001;
-        }
-
-        self.speed = self.speed.max(0.0001);
-
-        // ----------------------------------------------------
-        // SCREEN LIMIT
-        // ----------------------------------------------------
-
-        self.position[0] = self.position[0].clamp(-1.0, 1.0);
-
-        self.position[1] = self.position[1].clamp(-1.0, 1.0);
     }
 
     // ========================================================
@@ -231,7 +176,7 @@ impl App {
         // UPDATE
         // ----------------------------------------------------
 
-        self.update();
+        self.game_state.update();
 
         // ----------------------------------------------------
         // GET GPU OBJECTS
@@ -282,7 +227,7 @@ impl App {
         // ----------------------------------------------------
 
         let uniforms = Uniforms {
-            position: self.position,
+            position: self.game_state.position,
             _padding: [0.0, 0.0],
             color: [1.0, 0.0, 0.0, 1.0],
         };
@@ -1078,7 +1023,7 @@ impl ApplicationHandler for App {
                     if key_code == KeyCode::KeyF && pressed {
                         self.toggle_fullscreen();
                     } else {
-                        self.keyboard.handle_keyboard(key_code, pressed);
+                        self.game_state.keyboard.handle_keyboard(key_code, pressed);
                     }
                 }
             }

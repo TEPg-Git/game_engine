@@ -1,6 +1,7 @@
 mod app;
 mod graphics;
 mod input;
+mod state;
 mod text;
 
 use app::App;
