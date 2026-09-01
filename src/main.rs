@@ -10,9 +10,14 @@
 // - String rendering using fontdue
 // ============================================================
 
+mod graphics;
+mod text;
+
+use graphics::{Uniforms, Vertex};
+use text::{create_text_bitmap, load_font};
+
 use std::sync::Arc;
 
-use fontdue::Font;
 use wgpu::util::DeviceExt;
 
 use winit::{
@@ -22,57 +27,6 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
     window::{Window, WindowId},
 };
-
-// ============================================================
-// FONT
-// ============================================================
-
-const FONT_DATA: &[u8] = include_bytes!("../assets/Roboto-VariableFont_wdth,wght.ttf");
-
-fn load_font() -> Font {
-    Font::from_bytes(FONT_DATA, fontdue::FontSettings::default()).expect("Failed to load font")
-}
-
-// ============================================================
-// VERTEX
-// ============================================================
-
-#[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct Vertex {
-    position: [f32; 2],
-
-    tex_coords: [f32; 2],
-}
-
-impl Vertex {
-    const ATTRIBS: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![
-        0 => Float32x2,
-        1 => Float32x2
-    ];
-
-    fn layout() -> wgpu::VertexBufferLayout<'static> {
-        wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
-
-            step_mode: wgpu::VertexStepMode::Vertex,
-
-            attributes: &Self::ATTRIBS,
-        }
-    }
-}
-
-// ============================================================
-// UNIFORMS
-// ============================================================
-
-#[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct Uniforms {
-    position: [f32; 2],
-    _padding: [f32; 2],
-    color: [f32; 4],
-}
 
 // ============================================================
 // KEYBOARD
@@ -87,125 +41,6 @@ struct KeyboardState {
 
     i: bool,
     o: bool,
-}
-
-// ============================================================
-// TEXT BITMAP
-// ============================================================
-
-fn create_text_bitmap(font: &Font, text: &str, font_size: f32) -> (Vec<u8>, u32, u32) {
-    // --------------------------------------------------------
-    // STORE GLYPHS
-    // --------------------------------------------------------
-
-    let mut glyphs = Vec::new();
-
-    // --------------------------------------------------------
-    // CALCULATE TOTAL WIDTH
-    // --------------------------------------------------------
-
-    let mut total_width = 0usize;
-
-    let mut max_height = 0usize;
-
-    for character in text.chars() {
-        let (metrics, bitmap) = font.rasterize(character, font_size);
-
-        // --------------------------------------------
-        // Character width
-        // --------------------------------------------
-
-        let character_width = if character == ' ' {
-            // Give spaces some visible width
-            (font_size * 0.30) as usize
-        } else {
-            metrics.width
-        };
-
-        total_width += character_width;
-
-        max_height = max_height.max(metrics.height);
-
-        glyphs.push((character, metrics, bitmap));
-    }
-
-    // --------------------------------------------------------
-    // MAKE SURE TEXTURE IS NOT ZERO-SIZED
-    // --------------------------------------------------------
-
-    if total_width == 0 {
-        total_width = 1;
-    }
-
-    if max_height == 0 {
-        max_height = 1;
-    }
-
-    // --------------------------------------------------------
-    // RGBA BUFFER
-    // --------------------------------------------------------
-
-    let mut rgba_data = vec![0u8; total_width * max_height * 4];
-
-    // --------------------------------------------------------
-    // CURRENT X POSITION
-    // --------------------------------------------------------
-
-    let mut x_offset = 0usize;
-
-    // --------------------------------------------------------
-    // COPY GLYPHS
-    // --------------------------------------------------------
-
-    for (character, metrics, bitmap) in glyphs {
-        // ----------------------------------------------------
-        // SPACE
-        // ----------------------------------------------------
-
-        if character == ' ' {
-            x_offset += (font_size * 0.30) as usize;
-
-            continue;
-        }
-
-        // ----------------------------------------------------
-        // COPY BITMAP
-        // ----------------------------------------------------
-
-        for y in 0..metrics.height {
-            for x in 0..metrics.width {
-                let source_index = y * metrics.width + x;
-
-                let destination_index = (y * total_width + x_offset + x) * 4;
-
-                let alpha = bitmap[source_index];
-
-                // --------------------------------------------
-                // WHITE
-                // --------------------------------------------
-
-                rgba_data[destination_index] = 255;
-
-                rgba_data[destination_index + 1] = 255;
-
-                rgba_data[destination_index + 2] = 255;
-
-                // --------------------------------------------
-                // FONT BITMAP = ALPHA
-                // --------------------------------------------
-
-                rgba_data[destination_index + 3] = alpha;
-            }
-        }
-
-        // ----------------------------------------------------
-        // MOVE TO NEXT CHARACTER
-        // ----------------------------------------------------
-
-        x_offset += metrics.width;
-    }
-
-    (rgba_data, total_width as u32, max_height as u32)
 }
 
 // ============================================================
