@@ -11,9 +11,11 @@
 // ============================================================
 
 mod graphics;
+mod input;
 mod text;
 
 use graphics::{Uniforms, Vertex};
+use input::KeyboardState;
 use text::{create_text_bitmap, load_font};
 
 use std::sync::Arc;
@@ -27,21 +29,6 @@ use winit::{
     keyboard::{KeyCode, PhysicalKey},
     window::{Window, WindowId},
 };
-
-// ============================================================
-// KEYBOARD
-// ============================================================
-
-#[derive(Default)]
-struct KeyboardState {
-    w: bool,
-    s: bool,
-    a: bool,
-    d: bool,
-
-    i: bool,
-    o: bool,
-}
 
 // ============================================================
 // APP
@@ -155,40 +142,6 @@ impl App {
     }
 
     // ========================================================
-    // KEYBOARD
-    // ========================================================
-
-    fn handle_keyboard(&mut self, key_code: KeyCode, pressed: bool) {
-        match key_code {
-            KeyCode::KeyW => {
-                self.keyboard.w = pressed;
-            }
-
-            KeyCode::KeyS => {
-                self.keyboard.s = pressed;
-            }
-
-            KeyCode::KeyA => {
-                self.keyboard.a = pressed;
-            }
-
-            KeyCode::KeyD => {
-                self.keyboard.d = pressed;
-            }
-
-            KeyCode::KeyI => {
-                self.keyboard.i = pressed;
-            }
-
-            KeyCode::KeyO => {
-                self.keyboard.o = pressed;
-            }
-
-            _ => {}
-        }
-    }
-
-    // ========================================================
     // UPDATE
     // ========================================================
 
@@ -265,24 +218,20 @@ impl App {
 
         let surface = match &self.surface {
             Some(surface) => surface,
-
             None => return,
         };
 
         let device = match &self.device {
             Some(device) => device,
-
             None => return,
         };
 
         let config = match &mut self.config {
             Some(config) => config,
-
             None => return,
         };
 
         config.width = width;
-
         config.height = height;
 
         surface.configure(device, config);
@@ -307,49 +256,41 @@ impl App {
 
         let surface = match &self.surface {
             Some(surface) => surface,
-
             None => return,
         };
 
         let device = match &self.device {
             Some(device) => device,
-
             None => return,
         };
 
         let queue = match &self.queue {
             Some(queue) => queue,
-
             None => return,
         };
 
         let uniform_buffer = match &self.uniform_buffer {
             Some(buffer) => buffer,
-
             None => return,
         };
 
         let uniform_bind_group = match &self.uniform_bind_group {
             Some(bind_group) => bind_group,
-
             None => return,
         };
 
         let text_bind_group = match &self.text_bind_group {
             Some(bind_group) => bind_group,
-
             None => return,
         };
 
         let text_vertex_buffer = match &self.text_vertex_buffer {
             Some(buffer) => buffer,
-
             None => return,
         };
 
         let render_pipeline = match &self.render_pipeline {
             Some(pipeline) => pipeline,
-
             None => return,
         };
 
@@ -851,15 +792,19 @@ impl ApplicationHandler for App {
         // ====================================================
 
         let screen_width = size.width as f32;
+
         let screen_height = size.height as f32;
 
         // Convert pixels to NDC coordinates
+
         let text_width_ndc = (text_width as f32 / screen_width) * 2.0;
 
         let text_height_ndc = (text_height as f32 / screen_height) * 2.0;
 
         // Half dimensions
+
         let half_width = text_width_ndc / 2.0;
+
         let half_height = text_height_ndc / 2.0;
 
         // ====================================================
@@ -870,31 +815,37 @@ impl ApplicationHandler for App {
             // TOP LEFT
             Vertex {
                 position: [-half_width, half_height],
+
                 tex_coords: [0.0, 0.0],
             },
             // TOP RIGHT
             Vertex {
                 position: [half_width, half_height],
+
                 tex_coords: [1.0, 0.0],
             },
             // BOTTOM LEFT
             Vertex {
                 position: [-half_width, -half_height],
+
                 tex_coords: [0.0, 1.0],
             },
             // TOP RIGHT
             Vertex {
                 position: [half_width, half_height],
+
                 tex_coords: [1.0, 0.0],
             },
             // BOTTOM RIGHT
             Vertex {
                 position: [half_width, -half_height],
+
                 tex_coords: [1.0, 1.0],
             },
             // BOTTOM LEFT
             Vertex {
                 position: [-half_width, -half_height],
+
                 tex_coords: [0.0, 1.0],
             },
         ];
@@ -1130,6 +1081,7 @@ impl ApplicationHandler for App {
                     if key_code == KeyCode::Escape {
                         if pressed {
                             println!("Escape pressed");
+
                             event_loop.exit();
                         }
 
@@ -1143,7 +1095,7 @@ impl ApplicationHandler for App {
                     if key_code == KeyCode::KeyF && pressed {
                         self.toggle_fullscreen();
                     } else {
-                        self.handle_keyboard(key_code, pressed);
+                        self.keyboard.handle_keyboard(key_code, pressed);
                     }
                 }
             }
