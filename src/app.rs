@@ -1,5 +1,5 @@
+use crate::renderer::Renderer;
 use crate::state::GameState;
-
 use std::sync::Arc;
 
 use wgpu::util::DeviceExt;
@@ -27,13 +27,7 @@ pub struct App {
     // --------------------------------------------------------
     // WGPU
     // --------------------------------------------------------
-    surface: Option<wgpu::Surface<'static>>,
-
-    device: Option<wgpu::Device>,
-
-    queue: Option<wgpu::Queue>,
-
-    config: Option<wgpu::SurfaceConfiguration>,
+    renderer: Option<Renderer>,
 
     // --------------------------------------------------------
     // UNIFORM
@@ -79,13 +73,7 @@ impl App {
             // ------------------------------------------------
             // WGPU
             // ------------------------------------------------
-            surface: None,
-
-            device: None,
-
-            queue: None,
-
-            config: None,
+            renderer: None,
 
             // ------------------------------------------------
             // UNIFORM
@@ -144,25 +132,17 @@ impl App {
             return;
         }
 
-        let surface = match &self.surface {
-            Some(surface) => surface,
+        let renderer = match &mut self.renderer {
+            Some(renderer) => renderer,
             None => return,
         };
 
-        let device = match &self.device {
-            Some(device) => device,
-            None => return,
-        };
+        renderer.config.width = width;
+        renderer.config.height = height;
 
-        let config = match &mut self.config {
-            Some(config) => config,
-            None => return,
-        };
-
-        config.width = width;
-        config.height = height;
-
-        surface.configure(device, config);
+        renderer
+            .surface
+            .configure(&renderer.device, &renderer.config);
 
         println!("Resized to {}x{}", width, height);
     }
@@ -182,20 +162,14 @@ impl App {
         // GET GPU OBJECTS
         // ----------------------------------------------------
 
-        let surface = match &self.surface {
-            Some(surface) => surface,
+        let renderer = match &self.renderer {
+            Some(renderer) => renderer,
             None => return,
         };
 
-        let device = match &self.device {
-            Some(device) => device,
-            None => return,
-        };
-
-        let queue = match &self.queue {
-            Some(queue) => queue,
-            None => return,
-        };
+        let surface = &renderer.surface;
+        let device = &renderer.device;
+        let queue = &renderer.queue;
 
         let uniform_buffer = match &self.uniform_buffer {
             Some(buffer) => buffer,
@@ -244,17 +218,13 @@ impl App {
             wgpu::CurrentSurfaceTexture::Suboptimal(output) => output,
 
             wgpu::CurrentSurfaceTexture::Outdated => {
-                if let (Some(device), Some(config)) = (&self.device, &self.config) {
-                    surface.configure(device, config);
-                }
+                surface.configure(&renderer.device, &renderer.config);
 
                 return;
             }
 
             wgpu::CurrentSurfaceTexture::Lost => {
-                if let (Some(device), Some(config)) = (&self.device, &self.config) {
-                    surface.configure(device, config);
-                }
+                surface.configure(&renderer.device, &renderer.config);
 
                 return;
             }
@@ -914,13 +884,12 @@ impl ApplicationHandler for App {
 
         self.window = Some(window);
 
-        self.surface = Some(surface);
-
-        self.device = Some(device);
-
-        self.queue = Some(queue);
-
-        self.config = Some(config);
+        self.renderer = Some(Renderer {
+            surface,
+            device,
+            queue,
+            config,
+        });
 
         self.uniform_buffer = Some(uniform_buffer);
 

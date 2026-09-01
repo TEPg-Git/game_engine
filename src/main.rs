@@ -1,6 +1,7 @@
 mod app;
 mod graphics;
 mod input;
+mod renderer;
 mod state;
 mod text;
 
