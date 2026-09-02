@@ -1,3 +1,7 @@
+// ============================================================
+// UNIFORMS
+// ============================================================
+
 struct Uniforms {
     position: vec2<f32>,
     color: vec4<f32>,
@@ -5,6 +9,11 @@ struct Uniforms {
 
 @group(0) @binding(0)
 var<uniform> uniforms: Uniforms;
+
+
+// ============================================================
+// VERTEX INPUT
+// ============================================================
 
 struct VertexInput {
     @location(0)
@@ -14,6 +23,11 @@ struct VertexInput {
     tex_coords: vec2<f32>,
 };
 
+
+// ============================================================
+// VERTEX OUTPUT
+// ============================================================
+
 struct VertexOutput {
     @builtin(position)
     position: vec4<f32>,
@@ -21,6 +35,11 @@ struct VertexOutput {
     @location(0)
     tex_coords: vec2<f32>,
 };
+
+
+// ============================================================
+// VERTEX SHADER
+// ============================================================
 
 @vertex
 fn vs_main(vertex: VertexInput) -> VertexOutput {
@@ -37,22 +56,30 @@ fn vs_main(vertex: VertexInput) -> VertexOutput {
     return output;
 }
 
+
+// ============================================================
+// TEXTURE
+// ============================================================
+
 @group(1) @binding(0)
-var text_texture: texture_2d<f32>;
+var sprite_texture: texture_2d<f32>;
 
 @group(1) @binding(1)
-var text_sampler: sampler;
+var sprite_sampler: sampler;
+
+
+// ============================================================
+// FRAGMENT SHADER
+// ============================================================
 
 @fragment
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
+
     let texture_color = textureSample(
-        text_texture,
-        text_sampler,
+        sprite_texture,
+        sprite_sampler,
         vertex.tex_coords
     );
 
-    return vec4<f32>(
-        uniforms.color.rgb,
-        texture_color.a
-    );
+    return texture_color;
 }

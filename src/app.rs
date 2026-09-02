@@ -122,6 +122,10 @@ impl App {
 
         let text_vertex_buffer = &renderer.text_vertex_buffer;
 
+        let sprite_bind_group = &renderer.sprite_bind_group;
+
+        let sprite_vertex_buffer = &renderer.sprite_vertex_buffer;
+
         let render_pipeline = &renderer.render_pipeline;
 
         // ----------------------------------------------------
@@ -185,7 +189,7 @@ impl App {
         // ----------------------------------------------------
 
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Text Render Encoder"),
+            label: Some("Render Encoder"),
         });
 
         // ====================================================
@@ -194,7 +198,7 @@ impl App {
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Text Render Pass"),
+                label: Some("Render Pass"),
 
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
@@ -224,33 +228,35 @@ impl App {
                 multiview_mask: None,
             });
 
-            // ------------------------------------------------
+            // =================================================
             // PIPELINE
-            // ------------------------------------------------
+            // =================================================
 
             render_pass.set_pipeline(render_pipeline);
 
-            // ------------------------------------------------
-            // UNIFORM
-            // ------------------------------------------------
+            // =================================================
+            // UNIFORMS
+            // =================================================
 
             render_pass.set_bind_group(0, uniform_bind_group, &[]);
 
-            // ------------------------------------------------
-            // TEXTURE
-            // ------------------------------------------------
+            // =================================================
+            // SPRITE
+            // =================================================
+
+            render_pass.set_bind_group(1, sprite_bind_group, &[]);
+
+            render_pass.set_vertex_buffer(0, sprite_vertex_buffer.slice(..));
+
+            render_pass.draw(0..renderer.sprite_vertex_count, 0..1);
+
+            // =================================================
+            // TEXT
+            // =================================================
 
             render_pass.set_bind_group(1, text_bind_group, &[]);
 
-            // ------------------------------------------------
-            // TEXT QUAD
-            // ------------------------------------------------
-
             render_pass.set_vertex_buffer(0, text_vertex_buffer.slice(..));
-
-            // ------------------------------------------------
-            // DRAW
-            // ------------------------------------------------
 
             render_pass.draw(0..renderer.text_vertex_count, 0..1);
         }
@@ -307,7 +313,11 @@ impl ApplicationHandler for App {
 
         println!("================================");
 
-        println!("East Engine v0.3 initialized!");
+        println!("East Engine v0.4 initialized!");
+
+        println!("Texture rendering enabled");
+
+        println!("Sprite rendering enabled");
 
         println!("Text rendering enabled");
 
@@ -338,11 +348,8 @@ impl ApplicationHandler for App {
 
     fn window_event(
         &mut self,
-
         event_loop: &ActiveEventLoop,
-
         _window_id: WindowId,
-
         event: WindowEvent,
     ) {
         match event {
@@ -388,6 +395,10 @@ impl ApplicationHandler for App {
                     if key_code == KeyCode::KeyF && pressed {
                         self.toggle_fullscreen();
                     } else {
+                        // ------------------------------------
+                        // GAME INPUT
+                        // ------------------------------------
+
                         self.game_state.keyboard.handle_keyboard(key_code, pressed);
                     }
                 }

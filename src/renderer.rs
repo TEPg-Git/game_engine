@@ -4,7 +4,12 @@ use wgpu::util::DeviceExt;
 use winit::window::Window;
 
 use crate::graphics::{Uniforms, Vertex};
+use crate::sprite::Sprite;
 use crate::text::{create_text_bitmap, load_font};
+
+// ============================================================
+// RENDERER
+// ============================================================
 
 pub struct Renderer {
     // ========================================================
@@ -30,10 +35,22 @@ pub struct Renderer {
     pub text_vertex_count: u32,
 
     // ========================================================
+    // SPRITE
+    // ========================================================
+    pub sprite: Sprite,
+    pub sprite_bind_group: wgpu::BindGroup,
+    pub sprite_vertex_buffer: wgpu::Buffer,
+    pub sprite_vertex_count: u32,
+
+    // ========================================================
     // PIPELINE
     // ========================================================
     pub render_pipeline: wgpu::RenderPipeline,
 }
+
+// ============================================================
+// IMPLEMENTATION
+// ============================================================
 
 impl Renderer {
     pub fn new(window: Arc<Window>) -> Self {
@@ -107,7 +124,9 @@ impl Renderer {
 
         let uniforms = Uniforms {
             position: [0.0, 0.0],
+
             _padding: [0.0, 0.0],
+
             color: [1.0, 0.0, 0.0, 1.0],
         };
 
@@ -308,10 +327,12 @@ impl Renderer {
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                label: Some("Text Texture Bind Group Layout"),
+                label: Some("Texture Bind Group Layout"),
 
                 entries: &[
+                    // ========================================
                     // TEXTURE
+                    // ========================================
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
 
@@ -327,7 +348,9 @@ impl Renderer {
 
                         count: None,
                     },
+                    // ========================================
                     // SAMPLER
+                    // ========================================
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
 
@@ -388,32 +411,26 @@ impl Renderer {
         let text_vertices = [
             Vertex {
                 position: [-half_width, half_height],
-
                 tex_coords: [0.0, 0.0],
             },
             Vertex {
                 position: [half_width, half_height],
-
                 tex_coords: [1.0, 0.0],
             },
             Vertex {
                 position: [-half_width, -half_height],
-
                 tex_coords: [0.0, 1.0],
             },
             Vertex {
                 position: [half_width, half_height],
-
                 tex_coords: [1.0, 0.0],
             },
             Vertex {
                 position: [half_width, -half_height],
-
                 tex_coords: [1.0, 1.0],
             },
             Vertex {
                 position: [-half_width, -half_height],
-
                 tex_coords: [0.0, 1.0],
             },
         ];
@@ -435,13 +452,97 @@ impl Renderer {
         println!("Text vertex buffer created!");
 
         // ====================================================
+        // SPRITE
+        // ====================================================
+
+        let sprite = Sprite::from_file(&device, &queue, "assets/Test.jpg", [0.0, 0.0], [0.5, 0.5]);
+
+        println!("Sprite loaded!");
+
+        // ====================================================
+        // SPRITE BIND GROUP
+        // ====================================================
+
+        let sprite_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Sprite Bind Group"),
+
+            layout: &texture_bind_group_layout,
+
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+
+                    resource: wgpu::BindingResource::TextureView(&sprite.texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+
+                    resource: wgpu::BindingResource::Sampler(&sprite.texture.sampler),
+                },
+            ],
+        });
+
+        println!("Sprite bind group created!");
+
+        // ====================================================
+        // SPRITE QUAD
+        // ====================================================
+
+        let half_width = sprite.size[0] / 2.0;
+
+        let half_height = sprite.size[1] / 2.0;
+
+        let sprite_vertices = [
+            Vertex {
+                position: [-half_width, half_height],
+                tex_coords: [0.0, 0.0],
+            },
+            Vertex {
+                position: [half_width, half_height],
+                tex_coords: [1.0, 0.0],
+            },
+            Vertex {
+                position: [-half_width, -half_height],
+                tex_coords: [0.0, 1.0],
+            },
+            Vertex {
+                position: [half_width, half_height],
+                tex_coords: [1.0, 0.0],
+            },
+            Vertex {
+                position: [half_width, -half_height],
+                tex_coords: [1.0, 1.0],
+            },
+            Vertex {
+                position: [-half_width, -half_height],
+                tex_coords: [0.0, 1.0],
+            },
+        ];
+
+        // ====================================================
+        // SPRITE VERTEX BUFFER
+        // ====================================================
+
+        let sprite_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Sprite Vertex Buffer"),
+
+            contents: bytemuck::cast_slice(&sprite_vertices),
+
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        let sprite_vertex_count = sprite_vertices.len() as u32;
+
+        println!("Sprite vertex buffer created!");
+
+        // ====================================================
         // SHADER
         // ====================================================
 
         let shader_source = include_str!("shader.wgsl");
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Text Shader"),
+            label: Some("East Engine Shader"),
 
             source: wgpu::ShaderSource::Wgsl(shader_source.into()),
         });
@@ -453,7 +554,7 @@ impl Renderer {
         // ====================================================
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Text Pipeline Layout"),
+            label: Some("East Engine Pipeline Layout"),
 
             bind_group_layouts: &[
                 Some(&uniform_bind_group_layout),
@@ -470,7 +571,7 @@ impl Renderer {
         // ====================================================
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Text Render Pipeline"),
+            label: Some("East Engine Render Pipeline"),
 
             layout: Some(&pipeline_layout),
 
@@ -539,17 +640,32 @@ impl Renderer {
 
         Self {
             surface,
+
             device,
+
             queue,
+
             config,
 
             uniform_buffer,
+
             uniform_bind_group,
 
             text_texture,
+
             text_bind_group,
+
             text_vertex_buffer,
+
             text_vertex_count,
+
+            sprite,
+
+            sprite_bind_group,
+
+            sprite_vertex_buffer,
+
+            sprite_vertex_count,
 
             render_pipeline,
         }

@@ -2,8 +2,10 @@ mod app;
 mod graphics;
 mod input;
 mod renderer;
+mod sprite;
 mod state;
 mod text;
+mod texture;
 
 use app::App;
 use winit::event_loop::EventLoop;
