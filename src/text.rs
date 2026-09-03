@@ -4,7 +4,7 @@ use fontdue::Font;
 // FONT
 // ============================================================
 
-const FONT_DATA: &[u8] = include_bytes!("../assets/Roboto-VariableFont_wdth,wght.ttf");
+const FONT_DATA: &[u8] = include_bytes!("../assets/fonts/Roboto-VariableFont_wdth,wght.ttf");
 
 pub fn load_font() -> Font {
     Font::from_bytes(FONT_DATA, fontdue::FontSettings::default()).expect("Failed to load font")

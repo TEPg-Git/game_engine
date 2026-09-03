@@ -338,7 +338,7 @@ impl ApplicationHandler for App {
         let sprite = Sprite::from_file(
             &renderer.device,
             &renderer.queue,
-            "assets/Test.jpg",
+            "assets/textures/Test.jpg",
             [0.5, 0.5],
         );
 
