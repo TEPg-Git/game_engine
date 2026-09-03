@@ -123,9 +123,9 @@ impl Renderer {
         // ====================================================
 
         let uniforms = Uniforms {
-            position: [0.0, 0.0],
+            position_rotation: [0.0, 0.0, 0.0, 0.0],
 
-            _padding: [0.0, 0.0],
+            scale: [1.0, 1.0, 0.0, 0.0],
 
             color: [1.0, 0.0, 0.0, 1.0],
         };
@@ -455,7 +455,7 @@ impl Renderer {
         // SPRITE
         // ====================================================
 
-        let sprite = Sprite::from_file(&device, &queue, "assets/Test.jpg", [0.0, 0.0], [0.5, 0.5]);
+        let sprite = Sprite::from_file(&device, &queue, "assets/Test.jpg", [0.5, 0.5]);
 
         println!("Sprite loaded!");
 

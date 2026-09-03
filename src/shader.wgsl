@@ -3,13 +3,13 @@
 // ============================================================
 
 struct Uniforms {
-    position: vec2<f32>,
+    position_rotation: vec4<f32>,
+    scale: vec4<f32>,
     color: vec4<f32>,
 };
 
 @group(0) @binding(0)
 var<uniform> uniforms: Uniforms;
-
 
 // ============================================================
 // VERTEX INPUT
@@ -45,8 +45,44 @@ struct VertexOutput {
 fn vs_main(vertex: VertexInput) -> VertexOutput {
     var output: VertexOutput;
 
+    // ========================================================
+    // LOCAL POSITION
+    // ========================================================
+
+    var position = vertex.position;
+
+    // ========================================================
+    // SCALE
+    // ========================================================
+
+    position *= uniforms.scale.xy;
+
+    // ========================================================
+    // ROTATION
+    // ========================================================
+
+    let rotation = uniforms.position_rotation.z;
+
+    let cos_angle = cos(rotation);
+    let sin_angle = sin(rotation);
+
+    let rotated_position = vec2<f32>(
+        position.x * cos_angle - position.y * sin_angle,
+        position.x * sin_angle + position.y * cos_angle
+    );
+
+    // ========================================================
+    // POSITION
+    // ========================================================
+
+    position = rotated_position + uniforms.position_rotation.xy;
+
+    // ========================================================
+    // OUTPUT
+    // ========================================================
+
     output.position = vec4<f32>(
-        vertex.position + uniforms.position,
+        position,
         0.0,
         1.0
     );

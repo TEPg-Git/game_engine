@@ -9,28 +9,22 @@ use crate::texture::Texture;
 
 pub struct Sprite {
     pub texture: Texture,
-    pub position: [f32; 2],
+
     pub size: [f32; 2],
 }
+
+// ============================================================
+// IMPLEMENTATION
+// ============================================================
 
 impl Sprite {
     // ========================================================
     // CREATE SPRITE FROM FILE
     // ========================================================
 
-    pub fn from_file(
-        device: &Device,
-        queue: &Queue,
-        path: &str,
-        position: [f32; 2],
-        size: [f32; 2],
-    ) -> Self {
+    pub fn from_file(device: &Device, queue: &Queue, path: &str, size: [f32; 2]) -> Self {
         let texture = Texture::from_file(device, queue, path);
 
-        Self {
-            texture,
-            position,
-            size,
-        }
+        Self { texture, size }
     }
 }

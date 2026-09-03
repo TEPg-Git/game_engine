@@ -30,7 +30,12 @@ impl Vertex {
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Uniforms {
-    pub position: [f32; 2],
-    pub _padding: [f32; 2],
+    // position + rotation
+    pub position_rotation: [f32; 4],
+
+    // scale + padding
+    pub scale: [f32; 4],
+
+    // color
     pub color: [f32; 4],
 }

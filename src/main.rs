@@ -6,6 +6,7 @@ mod sprite;
 mod state;
 mod text;
 mod texture;
+mod transform;
 
 use app::App;
 use winit::event_loop::EventLoop;

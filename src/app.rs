@@ -133,9 +133,19 @@ impl App {
         // ----------------------------------------------------
 
         let uniforms = Uniforms {
-            position: self.game_state.position,
+            position_rotation: [
+                self.game_state.transform.position[0],
+                self.game_state.transform.position[1],
+                self.game_state.transform.rotation,
+                0.0,
+            ],
 
-            _padding: [0.0, 0.0],
+            scale: [
+                self.game_state.transform.scale[0],
+                self.game_state.transform.scale[1],
+                0.0,
+                0.0,
+            ],
 
             color: [1.0, 0.0, 0.0, 1.0],
         };
