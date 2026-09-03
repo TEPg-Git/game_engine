@@ -7,7 +7,7 @@ The engine is being developed with two primary goals:
 * 🎮 **Game Development**
 * 📊 **Real-Time Visualizations**
 
-The project focuses on understanding how rendering engines work internally — from creating a window and communicating with the GPU to rendering geometry, textures, text, and eventually building a complete engine architecture.
+The project focuses on understanding how rendering engines work internally — from creating a window and communicating with the GPU to rendering geometry, textures, sprites, text, transforms, and eventually building a complete engine architecture.
 
 > 🚧 **Status: Early Development**
 
@@ -41,8 +41,10 @@ This allows each system to be implemented and understood individually, from low-
 * Multiple object rendering
 * Object movement
 * Texture rendering
+* Sprite rendering
 * Circle rendering
 * Text rendering
+* Transform system
 * Fullscreen support
 * Window resizing
 
@@ -51,6 +53,8 @@ This allows each system to be implemented and understood individually, from low-
 * Keyboard input
 * WASD movement
 * Adjustable movement speed
+* Q/E rotation
+* Z/X scaling
 * Escape key window exit
 
 ### Assets
@@ -67,6 +71,9 @@ This allows each system to be implemented and understood individually, from low-
 * Separate input system
 * Separate graphics definitions
 * Separate text rendering system
+* Separate texture system
+* Separate sprite system
+* Separate transform system
 
 ---
 
@@ -86,6 +93,8 @@ East Engine is being developed incrementally, with each system implemented and t
 * [x] Texture rendering
 * [x] Circle rendering
 * [x] Text rendering
+* [x] Sprite rendering
+* [x] Transform system
 * [x] Fullscreen toggle
 * [x] Window resizing
 
@@ -94,6 +103,8 @@ East Engine is being developed incrementally, with each system implemented and t
 * [x] Keyboard input
 * [x] WASD movement
 * [x] Movement speed control
+* [x] Q/E rotation
+* [x] Z/X scaling
 * [x] ESC key closes the window
 
 ### Assets
@@ -110,14 +121,15 @@ East Engine is being developed incrementally, with each system implemented and t
 * [x] Input module
 * [x] Graphics module
 * [x] Text rendering module
+* [x] Texture module
+* [x] Sprite module
+* [x] Transform module
 * [x] Modular project structure
 
 ### Upcoming
 
 * [ ] Improved text rendering API
-* [ ] Sprite system
 * [ ] Camera system
-* [ ] Transform system
 * [ ] Entity/GameObject system
 * [ ] Asset manager
 * [ ] 3D model rendering
@@ -129,7 +141,7 @@ East Engine is being developed incrementally, with each system implemented and t
 
 ## 🏗️ Project Structure
 
-The engine is organized into separate modules so that rendering, input, state, and application logic remain independent.
+The engine is organized into separate modules so that rendering, input, state, application logic, and engine systems remain independent.
 
 ```text
 src/
@@ -138,116 +150,9 @@ src/
 ├── renderer.rs
 ├── graphics.rs
 ├── state.rs
+├── input.rs
 ├── text.rs
-├── input/
-│   └── mod.rs
+├── texture.rs
+├── sprite.rs
+├── transform.rs
 └── shader.wgsl
-```
-
-### Module Responsibilities
-
-| Module        | Responsibility                                                      |
-| ------------- | ------------------------------------------------------------------- |
-| `main.rs`     | Engine entry point                                                  |
-| `app.rs`      | Application lifecycle, window events, and game loop                 |
-| `renderer.rs` | GPU resources, rendering pipeline, textures, buffers, and rendering |
-| `graphics.rs` | Vertex and uniform data structures                                  |
-| `state.rs`    | Game state and movement logic                                       |
-| `input/`      | Keyboard input handling                                             |
-| `text.rs`     | Font loading and text rasterization                                 |
-| `shader.wgsl` | GPU shader code                                                     |
-
-This modular structure allows the engine to grow without keeping the entire implementation inside a single `main.rs` file.
-
----
-
-## 🧠 What I'm Learning
-
-East Engine is both a rendering engine and a learning project.
-
-While developing the engine, I'm learning about:
-
-* Graphics programming
-* GPU architecture
-* Rendering pipelines
-* GPU buffers
-* Vertex and index buffers
-* Shaders
-* WGSL
-* Textures and samplers
-* Font rendering
-* 2D rendering
-* 3D rendering
-* Graphics mathematics
-* Coordinate systems
-* Transformations
-* Input handling
-* Memory management
-* Rust programming
-* Real-time rendering
-* Game engine architecture
-* GPU programming with CUDA
-* And much more
-
----
-
-## 🛠️ Technologies
-
-| Technology   | Purpose                                              |
-| ------------ | ---------------------------------------------------- |
-| **Rust**     | Core programming language                            |
-| **wgpu**     | GPU abstraction and rendering                        |
-| **winit**    | Window creation and event handling                   |
-| **WGSL**     | GPU shader programming                               |
-| **fontdue**  | Font loading and glyph rasterization                 |
-| **bytemuck** | Conversion between Rust data and GPU-compatible data |
-
----
-
-## 🏗️ Development Philosophy
-
-East Engine is built **from the ground up, one system at a time**.
-
-The development process focuses on understanding each layer before moving to the next.
-
-```text
-Window
-   ↓
-GPU
-   ↓
-Rendering Pipeline
-   ↓
-Shaders
-   ↓
-Geometry
-   ↓
-Textures
-   ↓
-Text
-   ↓
-Sprites
-   ↓
-Transforms
-   ↓
-Camera
-   ↓
-Objects
-   ↓
-Models
-   ↓
-Lighting
-   ↓
-Engine Systems
-```
-
-The goal is not simply to make things work, but to understand **why they work** and how the individual systems come together to form a real-time rendering engine.
-
----
-
-## 🚧 Development Status
-
-East Engine is currently in **early development**.
-
-The core 2D rendering foundation is working, including GPU initialization, geometry rendering, textures, circles, text, input, movement, and fullscreen support.
-
-The next stage focuses on building higher-level engine systems on top of this rendering foundation.
