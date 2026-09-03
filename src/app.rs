@@ -1,3 +1,4 @@
+use crate::sprite::Sprite;
 use std::sync::Arc;
 
 use winit::{
@@ -25,6 +26,12 @@ pub struct App {
 
     // GAME STATE
     game_state: GameState,
+
+    // SPRITE
+    pub player_sprite_bind_group: Option<wgpu::BindGroup>,
+
+    pub player_sprite_vertex_buffer: Option<wgpu::Buffer>,
+    pub player_sprite_vertex_count: u32,
 }
 
 // ============================================================
@@ -39,6 +46,12 @@ impl App {
             renderer: None,
 
             game_state: GameState::new(),
+
+            player_sprite_bind_group: None,
+
+            player_sprite_vertex_buffer: None,
+
+            player_sprite_vertex_count: 0,
         }
     }
 
@@ -122,27 +135,32 @@ impl App {
 
         let text_vertex_buffer = &renderer.text_vertex_buffer;
 
-        let sprite_bind_group = &renderer.sprite_bind_group;
-
-        let sprite_vertex_buffer = &renderer.sprite_vertex_buffer;
-
         let render_pipeline = &renderer.render_pipeline;
 
-        // ----------------------------------------------------
+        // ========================================================
+        // PLAYER TRANSFORM
+        // ========================================================
+
+        let player = match self.game_state.get_entity(0) {
+            Some(player) => player,
+            None => return,
+        };
+
+        // ========================================================
         // UPDATE UNIFORMS
-        // ----------------------------------------------------
+        // ========================================================
 
         let uniforms = Uniforms {
             position_rotation: [
-                self.game_state.transform.position[0],
-                self.game_state.transform.position[1],
-                self.game_state.transform.rotation,
+                player.transform.position[0],
+                player.transform.position[1],
+                player.transform.rotation,
                 0.0,
             ],
 
             scale: [
-                self.game_state.transform.scale[0],
-                self.game_state.transform.scale[1],
+                player.transform.scale[0],
+                player.transform.scale[1],
                 0.0,
                 0.0,
             ],
@@ -154,12 +172,8 @@ impl App {
                 self.game_state.camera.position[1],
             ],
 
-            camera_zoom: [
-                self.game_state.camera.zoom,
-                0.0,
-            ],
+            camera_zoom: [self.game_state.camera.zoom, 0.0],
         };
-
         queue.write_buffer(uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
 
         // ----------------------------------------------------
@@ -264,12 +278,14 @@ impl App {
             // SPRITE
             // =================================================
 
-            render_pass.set_bind_group(1, sprite_bind_group, &[]);
-
-            render_pass.set_vertex_buffer(0, sprite_vertex_buffer.slice(..));
-
-            render_pass.draw(0..renderer.sprite_vertex_count, 0..1);
-
+            if let (Some(bind_group), Some(vertex_buffer)) = (
+                self.player_sprite_bind_group.as_ref(),
+                self.player_sprite_vertex_buffer.as_ref(),
+            ) {
+                render_pass.set_bind_group(1, bind_group, &[]);
+                render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+                render_pass.draw(0..self.player_sprite_vertex_count, 0..1);
+            }
             // =================================================
             // TEXT
             // =================================================
@@ -318,6 +334,29 @@ impl ApplicationHandler for App {
         // ====================================================
 
         let renderer = Renderer::new(window.clone());
+
+        let sprite = Sprite::from_file(
+            &renderer.device,
+            &renderer.queue,
+            "assets/Test.jpg",
+            [0.5, 0.5],
+        );
+
+        if let Some(player) = self.game_state.get_entity_mut(0) {
+            player.set_sprite(sprite);
+        }
+
+        if let Some(player) = self.game_state.get_entity(0) {
+            if let Some(sprite) = &player.sprite {
+                let bind_group = renderer.create_sprite_bind_group(sprite);
+
+                let (vertex_buffer, vertex_count) = renderer.create_sprite_vertex_buffer(sprite);
+
+                self.player_sprite_bind_group = Some(bind_group);
+                self.player_sprite_vertex_buffer = Some(vertex_buffer);
+                self.player_sprite_vertex_count = vertex_count;
+            }
+        }
 
         // ====================================================
         // STORE

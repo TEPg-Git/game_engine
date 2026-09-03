@@ -20,6 +20,8 @@ pub struct Renderer {
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
 
+    pub texture_bind_group_layout: wgpu::BindGroupLayout,
+
     // ========================================================
     // UNIFORM
     // ========================================================
@@ -33,14 +35,6 @@ pub struct Renderer {
     pub text_bind_group: wgpu::BindGroup,
     pub text_vertex_buffer: wgpu::Buffer,
     pub text_vertex_count: u32,
-
-    // ========================================================
-    // SPRITE
-    // ========================================================
-    pub sprite: Sprite,
-    pub sprite_bind_group: wgpu::BindGroup,
-    pub sprite_vertex_buffer: wgpu::Buffer,
-    pub sprite_vertex_count: u32,
 
     // ========================================================
     // PIPELINE
@@ -456,90 +450,6 @@ impl Renderer {
         println!("Text vertex buffer created!");
 
         // ====================================================
-        // SPRITE
-        // ====================================================
-
-        let sprite = Sprite::from_file(&device, &queue, "assets/Test.jpg", [0.5, 0.5]);
-
-        println!("Sprite loaded!");
-
-        // ====================================================
-        // SPRITE BIND GROUP
-        // ====================================================
-
-        let sprite_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Sprite Bind Group"),
-
-            layout: &texture_bind_group_layout,
-
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-
-                    resource: wgpu::BindingResource::TextureView(&sprite.texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-
-                    resource: wgpu::BindingResource::Sampler(&sprite.texture.sampler),
-                },
-            ],
-        });
-
-        println!("Sprite bind group created!");
-
-        // ====================================================
-        // SPRITE QUAD
-        // ====================================================
-
-        let half_width = sprite.size[0] / 2.0;
-
-        let half_height = sprite.size[1] / 2.0;
-
-        let sprite_vertices = [
-            Vertex {
-                position: [-half_width, half_height],
-                tex_coords: [0.0, 0.0],
-            },
-            Vertex {
-                position: [half_width, half_height],
-                tex_coords: [1.0, 0.0],
-            },
-            Vertex {
-                position: [-half_width, -half_height],
-                tex_coords: [0.0, 1.0],
-            },
-            Vertex {
-                position: [half_width, half_height],
-                tex_coords: [1.0, 0.0],
-            },
-            Vertex {
-                position: [half_width, -half_height],
-                tex_coords: [1.0, 1.0],
-            },
-            Vertex {
-                position: [-half_width, -half_height],
-                tex_coords: [0.0, 1.0],
-            },
-        ];
-
-        // ====================================================
-        // SPRITE VERTEX BUFFER
-        // ====================================================
-
-        let sprite_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Sprite Vertex Buffer"),
-
-            contents: bytemuck::cast_slice(&sprite_vertices),
-
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-
-        let sprite_vertex_count = sprite_vertices.len() as u32;
-
-        println!("Sprite vertex buffer created!");
-
-        // ====================================================
         // SHADER
         // ====================================================
 
@@ -651,6 +561,8 @@ impl Renderer {
 
             config,
 
+            texture_bind_group_layout,
+
             uniform_buffer,
 
             uniform_bind_group,
@@ -663,15 +575,74 @@ impl Renderer {
 
             text_vertex_count,
 
-            sprite,
-
-            sprite_bind_group,
-
-            sprite_vertex_buffer,
-
-            sprite_vertex_count,
-
             render_pipeline,
         }
+    }
+
+    pub fn create_sprite_bind_group(&self, sprite: &Sprite) -> wgpu::BindGroup {
+        self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Sprite Bind Group"),
+
+            layout: &self.texture_bind_group_layout,
+
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+
+                    resource: wgpu::BindingResource::TextureView(&sprite.texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+
+                    resource: wgpu::BindingResource::Sampler(&sprite.texture.sampler),
+                },
+            ],
+        })
+    }
+
+    pub fn create_sprite_vertex_buffer(&self, sprite: &Sprite) -> (wgpu::Buffer, u32) {
+        let half_width = sprite.size[0] / 2.0;
+        let half_height = sprite.size[1] / 2.0;
+
+        let vertices = [
+            Vertex {
+                position: [-half_width, half_height],
+                tex_coords: [0.0, 0.0],
+            },
+            Vertex {
+                position: [half_width, half_height],
+                tex_coords: [1.0, 0.0],
+            },
+            Vertex {
+                position: [-half_width, -half_height],
+                tex_coords: [0.0, 1.0],
+            },
+            Vertex {
+                position: [half_width, half_height],
+                tex_coords: [1.0, 0.0],
+            },
+            Vertex {
+                position: [half_width, -half_height],
+                tex_coords: [1.0, 1.0],
+            },
+            Vertex {
+                position: [-half_width, -half_height],
+                tex_coords: [0.0, 1.0],
+            },
+        ];
+
+        let vertex_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Sprite Vertex Buffer"),
+
+                contents: bytemuck::cast_slice(&vertices),
+
+                usage: wgpu::BufferUsages::VERTEX,
+            });
+
+        let vertex_count = vertices.len() as u32;
+
+        (vertex_buffer, vertex_count)
     }
 }
