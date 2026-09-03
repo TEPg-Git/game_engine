@@ -7,7 +7,7 @@ The engine is being developed with two primary goals:
 * 🎮 **Game Development**
 * 📊 **Real-Time Visualizations**
 
-The project focuses on understanding how rendering engines work internally — from creating a window and communicating with the GPU to rendering geometry, textures, sprites, text, transforms, and eventually building a complete engine architecture.
+The project focuses on understanding how rendering engines work internally — from creating a window and communicating with the GPU to rendering geometry, textures, sprites, text, transforms, cameras, and eventually building a complete engine architecture.
 
 > 🚧 **Status: Early Development**
 
@@ -45,17 +45,22 @@ This allows each system to be implemented and understood individually, from low-
 * Circle rendering
 * Text rendering
 * Transform system
+* Camera system
+* Camera movement
+* Camera zoom
 * Fullscreen support
 * Window resizing
 
 ### Input
 
 * Keyboard input
-* WASD movement
-* Adjustable movement speed
-* Q/E rotation
-* Z/X scaling
-* Escape key window exit
+* WASD → object movement
+* I/O → adjustable movement speed
+* Q/E → object rotation
+* Z/X → object scaling
+* Arrow keys → camera movement
+* +/- → camera zoom
+* Escape → window exit
 
 ### Assets
 
@@ -70,6 +75,7 @@ This allows each system to be implemented and understood individually, from low-
 * Dedicated game state
 * Separate input system
 * Separate graphics definitions
+* Separate camera system
 * Separate text rendering system
 * Separate texture system
 * Separate sprite system
@@ -95,6 +101,9 @@ East Engine is being developed incrementally, with each system implemented and t
 * [x] Text rendering
 * [x] Sprite rendering
 * [x] Transform system
+* [x] Camera system
+* [x] Camera movement
+* [x] Camera zoom
 * [x] Fullscreen toggle
 * [x] Window resizing
 
@@ -105,6 +114,8 @@ East Engine is being developed incrementally, with each system implemented and t
 * [x] Movement speed control
 * [x] Q/E rotation
 * [x] Z/X scaling
+* [x] Arrow-key camera movement
+* [x] Camera zoom controls
 * [x] ESC key closes the window
 
 ### Assets
@@ -120,6 +131,7 @@ East Engine is being developed incrementally, with each system implemented and t
 * [x] Game state module
 * [x] Input module
 * [x] Graphics module
+* [x] Camera module
 * [x] Text rendering module
 * [x] Texture module
 * [x] Sprite module
@@ -129,7 +141,6 @@ East Engine is being developed incrementally, with each system implemented and t
 ### Upcoming
 
 * [ ] Improved text rendering API
-* [ ] Camera system
 * [ ] Entity/GameObject system
 * [ ] Asset manager
 * [ ] 3D model rendering
@@ -147,10 +158,12 @@ The engine is organized into separate modules so that rendering, input, state, a
 src/
 ├── main.rs
 ├── app.rs
+├── camera.rs
 ├── renderer.rs
 ├── graphics.rs
 ├── state.rs
-├── input.rs
+├── input/
+│   └── mod.rs
 ├── text.rs
 ├── texture.rs
 ├── sprite.rs

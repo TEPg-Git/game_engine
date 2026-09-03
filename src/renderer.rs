@@ -128,6 +128,10 @@ impl Renderer {
             scale: [1.0, 1.0, 0.0, 0.0],
 
             color: [1.0, 0.0, 0.0, 1.0],
+
+            camera_position: [0.0, 0.0],
+
+            camera_zoom: [1.0, 0.0],
         };
 
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {

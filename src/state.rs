@@ -1,3 +1,4 @@
+use crate::camera::Camera;
 use crate::input::KeyboardState;
 use crate::transform::Transform;
 
@@ -9,6 +10,8 @@ pub struct GameState {
     pub keyboard: KeyboardState,
 
     pub transform: Transform,
+
+    pub camera: Camera,
 
     pub speed: f32,
 }
@@ -23,6 +26,8 @@ impl GameState {
             keyboard: KeyboardState::default(),
 
             transform: Transform::new(),
+
+            camera: Camera::new(),
 
             speed: 0.001,
         }
@@ -68,14 +73,6 @@ impl GameState {
         self.speed = self.speed.max(0.0001);
 
         // ----------------------------------------------------
-        // SCREEN LIMIT
-        // ----------------------------------------------------
-
-        self.transform.position[0] = self.transform.position[0].clamp(-1.0, 1.0);
-
-        self.transform.position[1] = self.transform.position[1].clamp(-1.0, 1.0);
-
-        // ----------------------------------------------------
         // ROTATION
         // ----------------------------------------------------
 
@@ -108,5 +105,35 @@ impl GameState {
         self.transform.scale[0] = self.transform.scale[0].clamp(0.1, 3.0);
 
         self.transform.scale[1] = self.transform.scale[1].clamp(0.1, 3.0);
+
+        // ========================================================
+        // CAMERA MOVEMENT
+        // ========================================================
+        if self.keyboard.up {
+            self.camera.translate(0.0, self.speed);
+        }
+
+        if self.keyboard.down {
+            self.camera.translate(0.0, -self.speed);
+        }
+
+        if self.keyboard.left {
+            self.camera.translate(-self.speed, 0.0);
+        }
+
+        if self.keyboard.right {
+            self.camera.translate(self.speed, 0.0);
+        }
+
+        // ========================================================
+        // CAMERA ZOOM
+        // ========================================================
+        if self.keyboard.zoom_in {
+            self.camera.set_zoom(self.camera.zoom + 0.01);
+        }
+
+        if self.keyboard.zoom_out {
+            self.camera.set_zoom(self.camera.zoom - 0.01);
+        }
     }
 }

@@ -23,6 +23,7 @@ impl Vertex {
         }
     }
 }
+
 // ============================================================
 // UNIFORMS
 // ============================================================
@@ -38,4 +39,10 @@ pub struct Uniforms {
 
     // color
     pub color: [f32; 4],
+
+    // camera position
+    pub camera_position: [f32; 2],
+
+    // camera zoom + padding
+    pub camera_zoom: [f32; 2],
 }

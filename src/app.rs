@@ -148,6 +148,16 @@ impl App {
             ],
 
             color: [1.0, 0.0, 0.0, 1.0],
+
+            camera_position: [
+                self.game_state.camera.position[0],
+                self.game_state.camera.position[1],
+            ],
+
+            camera_zoom: [
+                self.game_state.camera.zoom,
+                0.0,
+            ],
         };
 
         queue.write_buffer(uniform_buffer, 0, bytemuck::bytes_of(&uniforms));

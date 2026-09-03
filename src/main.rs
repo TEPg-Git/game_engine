@@ -1,4 +1,5 @@
 mod app;
+mod camera;
 mod graphics;
 mod input;
 mod renderer;
@@ -7,6 +8,7 @@ mod state;
 mod text;
 mod texture;
 mod transform;
+
 
 use app::App;
 use winit::event_loop::EventLoop;

@@ -6,6 +6,9 @@ struct Uniforms {
     position_rotation: vec4<f32>,
     scale: vec4<f32>,
     color: vec4<f32>,
+
+    camera_position: vec2<f32>,
+    camera_zoom: vec2<f32>,
 };
 
 @group(0) @binding(0)
@@ -72,10 +75,18 @@ fn vs_main(vertex: VertexInput) -> VertexOutput {
     );
 
     // ========================================================
-    // POSITION
+    // WORLD POSITION
     // ========================================================
 
     position = rotated_position + uniforms.position_rotation.xy;
+
+    // ========================================================
+    // CAMERA
+    // ========================================================
+
+    position -= uniforms.camera_position;
+
+    position *= uniforms.camera_zoom.x;
 
     // ========================================================
     // OUTPUT
