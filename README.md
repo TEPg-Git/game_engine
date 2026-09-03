@@ -140,9 +140,20 @@ East Engine is being developed incrementally, with each system implemented and t
 
 ### Upcoming
 
-* [ ] Improved text rendering API
 * [ ] Entity/GameObject system
+* [ ] Improved text rendering API
 * [ ] Asset manager
+* [ ] Scene system
+* [ ] Time / Delta Time
+* [ ] Animation
+* [ ] Collision
+* [ ] Physics
+* [ ] Sprite batching
+* [ ] Layer/depth ordering
+* [ ] Rendering improvements
+* [ ] Small playable 2D game
+* [ ] Release build
+* [ ] Test on another computer
 * [ ] 3D model rendering
 * [ ] 3D rendering pipeline
 * [ ] Lighting
