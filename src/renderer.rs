@@ -5,7 +5,7 @@ use winit::window::Window;
 
 use crate::graphics::{Uniforms, Vertex};
 use crate::sprite::Sprite;
-use crate::text::{Text, create_text_bitmap, load_font};
+use crate::text::{Text, create_text_bitmap_with_options, load_font};
 
 // ============================================================
 // RENDERER
@@ -23,7 +23,7 @@ pub struct Renderer {
     pub texture_bind_group_layout: wgpu::BindGroupLayout,
 
     // ========================================================
-    // UNIFORM
+    // SPRITE / OBJECT UNIFORM
     // ========================================================
     pub uniform_buffer: wgpu::Buffer,
     pub uniform_bind_group: wgpu::BindGroup,
@@ -120,15 +120,16 @@ impl Renderer {
         println!("Surface configured!");
 
         // ====================================================
-        // UNIFORM BUFFER
+        // OBJECT UNIFORM
         // ====================================================
 
+        // White means "do not tint the sprite".
         let uniforms = Uniforms {
             position_rotation: [0.0, 0.0, 0.0, 0.0],
 
             scale: [1.0, 1.0, 0.0, 0.0],
 
-            color: [1.0, 0.0, 0.0, 1.0],
+            color: [1.0, 1.0, 1.0, 1.0],
 
             camera_position: [0.0, 0.0],
 
@@ -171,7 +172,7 @@ impl Renderer {
             });
 
         // ====================================================
-        // UNIFORM BIND GROUP
+        // OBJECT UNIFORM BIND GROUP
         // ====================================================
 
         let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -191,25 +192,35 @@ impl Renderer {
         // ====================================================
         // TEXT UNIFORM
         // ====================================================
+
         let text_uniforms = Uniforms {
-            position_rotation: [0.0, 0.0, 0.0, 0.0],
-            scale: [1.0, 1.0, 0.0, 0.0],
-            color: [1.0, 1.0, 1.0, 1.0],
+            position_rotation: [text.position[0], text.position[1], text.rotation, 0.0],
+
+            scale: [text.scale[0], text.scale[1], 0.0, 0.0],
+
+            color: [text.color[0], text.color[1], text.color[2], text.opacity],
+
             camera_position: [0.0, 0.0],
+
             camera_zoom: [1.0, 0.0],
         };
 
         let text_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Text Uniform Buffer"),
+
             contents: bytemuck::bytes_of(&text_uniforms),
+
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
         let text_uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Text Uniform Bind Group"),
+
             layout: &uniform_bind_group_layout,
+
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
+
                 resource: text_uniform_buffer.as_entire_binding(),
             }],
         });
@@ -223,17 +234,20 @@ impl Renderer {
         println!("Font loaded successfully!");
 
         // ====================================================
-        // TEXT
+        // CREATE TEXT BITMAP
         // ====================================================
 
         println!("Rendering text: {}", text.content);
 
-        // ====================================================
-        // CREATE TEXT BITMAP
-        // ====================================================
-
-        let (rgba_data, text_width, text_height) =
-            create_text_bitmap(&font, &text.content, text.font_size);
+        let (rgba_data, text_width, text_height) = create_text_bitmap_with_options(
+            &font,
+            &text.content,
+            text.font_size,
+            text.line_spacing,
+            text.letter_spacing,
+            text.max_width,
+            text.alignment,
+        );
 
         println!("Text size: {}x{}", text_width, text_height);
 
@@ -358,9 +372,9 @@ impl Renderer {
                 label: Some("Texture Bind Group Layout"),
 
                 entries: &[
-                    // ========================================
+                    // ====================================
                     // TEXTURE
-                    // ========================================
+                    // ====================================
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
 
@@ -376,9 +390,9 @@ impl Renderer {
 
                         count: None,
                     },
-                    // ========================================
+                    // ====================================
                     // SAMPLER
-                    // ========================================
+                    // ====================================
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
 
@@ -420,9 +434,9 @@ impl Renderer {
         // TEXT SIZE IN SCREEN SPACE
         // ====================================================
 
-        let screen_width = size.width as f32;
+        let screen_width = size.width.max(1) as f32;
 
-        let screen_height = size.height as f32;
+        let screen_height = size.height.max(1) as f32;
 
         let text_width_ndc = (text_width as f32 / screen_width) * 2.0;
 
@@ -439,26 +453,32 @@ impl Renderer {
         let text_vertices = [
             Vertex {
                 position: [-half_width, half_height],
+
                 tex_coords: [0.0, 0.0],
             },
             Vertex {
                 position: [half_width, half_height],
+
                 tex_coords: [1.0, 0.0],
             },
             Vertex {
                 position: [-half_width, -half_height],
+
                 tex_coords: [0.0, 1.0],
             },
             Vertex {
                 position: [half_width, half_height],
+
                 tex_coords: [1.0, 0.0],
             },
             Vertex {
                 position: [half_width, -half_height],
+
                 tex_coords: [1.0, 1.0],
             },
             Vertex {
                 position: [-half_width, -half_height],
+
                 tex_coords: [0.0, 1.0],
             },
         ];
@@ -579,7 +599,7 @@ impl Renderer {
         println!("Render pipeline created!");
 
         // ====================================================
-        // RETURN RENDERER
+        // RETURN
         // ====================================================
 
         Self {
@@ -609,11 +629,15 @@ impl Renderer {
 
             text_vertex_count,
 
-            render_pipeline,
-
             text_revision: text.revision(),
+
+            render_pipeline,
         }
     }
+
+    // ========================================================
+    // SPRITE BIND GROUP
+    // ========================================================
 
     pub fn create_sprite_bind_group(&self, sprite: &Sprite) -> wgpu::BindGroup {
         self.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -636,33 +660,44 @@ impl Renderer {
         })
     }
 
+    // ========================================================
+    // SPRITE VERTEX BUFFER
+    // ========================================================
+
     pub fn create_sprite_vertex_buffer(&self, sprite: &Sprite) -> (wgpu::Buffer, u32) {
         let half_width = sprite.size[0] / 2.0;
+
         let half_height = sprite.size[1] / 2.0;
 
         let vertices = [
             Vertex {
                 position: [-half_width, half_height],
+
                 tex_coords: [0.0, 0.0],
             },
             Vertex {
                 position: [half_width, half_height],
+
                 tex_coords: [1.0, 0.0],
             },
             Vertex {
                 position: [-half_width, -half_height],
+
                 tex_coords: [0.0, 1.0],
             },
             Vertex {
                 position: [half_width, half_height],
+
                 tex_coords: [1.0, 0.0],
             },
             Vertex {
                 position: [half_width, -half_height],
+
                 tex_coords: [1.0, 1.0],
             },
             Vertex {
                 position: [-half_width, -half_height],
+
                 tex_coords: [0.0, 1.0],
             },
         ];
@@ -682,6 +717,10 @@ impl Renderer {
         (vertex_buffer, vertex_count)
     }
 
+    // ========================================================
+    // UPDATE TEXT
+    // ========================================================
+
     pub fn update_text(&mut self, text: &Text) {
         // ====================================================
         // LOAD FONT
@@ -693,8 +732,20 @@ impl Renderer {
         // CREATE TEXT BITMAP
         // ====================================================
 
-        let (rgba_data, text_width, text_height) =
-            create_text_bitmap(&font, &text.content, text.font_size);
+        let (rgba_data, text_width, text_height) = create_text_bitmap_with_options(
+            &font,
+            &text.content,
+            text.font_size,
+            text.line_spacing,
+            text.letter_spacing,
+            text.max_width,
+            text.alignment,
+        );
+
+        println!(
+            "Text updated: {} ({}x{})",
+            text.content, text_width, text_height
+        );
 
         // ====================================================
         // WGPU ROW PADDING
@@ -714,6 +765,7 @@ impl Renderer {
 
         for y in 0..text_height {
             let source_start = (y * unpadded_bytes_per_row) as usize;
+
             let source_end = source_start + unpadded_bytes_per_row as usize;
 
             let destination_start = (y * padded_bytes_per_row) as usize;
@@ -725,7 +777,7 @@ impl Renderer {
         }
 
         // ====================================================
-        // CREATE NEW TEXTURE
+        // CREATE TEXTURE
         // ====================================================
 
         let text_texture = self.device.create_texture(&wgpu::TextureDescriptor {
@@ -733,11 +785,14 @@ impl Renderer {
 
             size: wgpu::Extent3d {
                 width: text_width,
+
                 height: text_height,
+
                 depth_or_array_layers: 1,
             },
 
             mip_level_count: 1,
+
             sample_count: 1,
 
             dimension: wgpu::TextureDimension::D2,
@@ -750,7 +805,7 @@ impl Renderer {
         });
 
         // ====================================================
-        // UPLOAD TEXTURE
+        // UPLOAD
         // ====================================================
 
         self.queue.write_texture(
@@ -773,13 +828,15 @@ impl Renderer {
             },
             wgpu::Extent3d {
                 width: text_width,
+
                 height: text_height,
+
                 depth_or_array_layers: 1,
             },
         );
 
         // ====================================================
-        // TEXTURE VIEW
+        // VIEW
         // ====================================================
 
         let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -827,14 +884,16 @@ impl Renderer {
         // TEXT SIZE IN SCREEN SPACE
         // ====================================================
 
-        let screen_width = self.config.width as f32;
-        let screen_height = self.config.height as f32;
+        let screen_width = self.config.width.max(1) as f32;
+
+        let screen_height = self.config.height.max(1) as f32;
 
         let text_width_ndc = (text_width as f32 / screen_width) * 2.0;
 
         let text_height_ndc = (text_height as f32 / screen_height) * 2.0;
 
         let half_width = text_width_ndc / 2.0;
+
         let half_height = text_height_ndc / 2.0;
 
         // ====================================================
@@ -844,32 +903,38 @@ impl Renderer {
         let text_vertices = [
             Vertex {
                 position: [-half_width, half_height],
+
                 tex_coords: [0.0, 0.0],
             },
             Vertex {
                 position: [half_width, half_height],
+
                 tex_coords: [1.0, 0.0],
             },
             Vertex {
                 position: [-half_width, -half_height],
+
                 tex_coords: [0.0, 1.0],
             },
             Vertex {
                 position: [half_width, half_height],
+
                 tex_coords: [1.0, 0.0],
             },
             Vertex {
                 position: [half_width, -half_height],
+
                 tex_coords: [1.0, 1.0],
             },
             Vertex {
                 position: [-half_width, -half_height],
+
                 tex_coords: [0.0, 1.0],
             },
         ];
 
         // ====================================================
-        // TEXT VERTEX BUFFER
+        // VERTEX BUFFER
         // ====================================================
 
         let text_vertex_buffer =
@@ -883,15 +948,17 @@ impl Renderer {
                 });
 
         // ====================================================
-        // UPDATE RENDERER
+        // STORE
         // ====================================================
 
         self.text_texture = text_texture;
-        self.text_bind_group = text_bind_group;
-        self.text_vertex_buffer = text_vertex_buffer;
-        self.text_vertex_count = text_vertices.len() as u32;
-        self.text_revision = text.revision();
 
-        println!("Text updated: {}", text.content);
+        self.text_bind_group = text_bind_group;
+
+        self.text_vertex_buffer = text_vertex_buffer;
+
+        self.text_vertex_count = text_vertices.len() as u32;
+
+        self.text_revision = text.revision();
     }
 }

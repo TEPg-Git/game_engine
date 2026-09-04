@@ -29,7 +29,6 @@ pub struct App {
 
     // SPRITE
     pub player_sprite_bind_group: Option<wgpu::BindGroup>,
-
     pub player_sprite_vertex_buffer: Option<wgpu::Buffer>,
     pub player_sprite_vertex_count: u32,
 }
@@ -108,74 +107,102 @@ impl App {
 
         self.game_state.update();
 
-        if let Some(renderer) = self.renderer.as_mut() {
-            if renderer.text_revision != self.game_state.text.revision() {
-                renderer.update_text(&self.game_state.text);
-            }
-        }
-
-        if let Some(renderer) = self.renderer.as_ref() {
-            let text_uniforms = Uniforms {
-                position_rotation: [
-                    self.game_state.text.position[0],
-                    self.game_state.text.position[1],
-                    0.0,
-                    0.0,
-                ],
-                scale: [1.0, 1.0, 0.0, 0.0],
-                color: self.game_state.text.color,
-                camera_position: [0.0, 0.0],
-                camera_zoom: [1.0, 0.0],
-            };
-
-            renderer.queue.write_buffer(
-                &renderer.text_uniform_buffer,
-                0,
-                bytemuck::bytes_of(&text_uniforms),
-            );
-        }
-
         // ----------------------------------------------------
         // GET RENDERER
         // ----------------------------------------------------
 
-        let renderer = match &self.renderer {
+        let renderer = match self.renderer.as_mut() {
             Some(renderer) => renderer,
             None => return,
         };
+
+        // ----------------------------------------------------
+        // UPDATE TEXT BITMAP
+        // ----------------------------------------------------
+        //
+        // Content, font size, alignment, wrapping, line spacing
+        // and letter spacing cause the text bitmap to change.
+        //
+        // Transform/color/opacity are handled through uniforms.
+        // ----------------------------------------------------
+
+        if renderer.text_revision != self.game_state.text.revision() {
+            renderer.update_text(&self.game_state.text);
+        }
+
+        // ----------------------------------------------------
+        // UPDATE TEXT UNIFORMS
+        // ----------------------------------------------------
+        //
+        // Text is currently screen-space-like:
+        // camera position = 0
+        // camera zoom    = 1
+        //
+        // Therefore camera movement/zoom does not affect UI text.
+        // ----------------------------------------------------
+
+        let text_uniforms = Uniforms {
+            position_rotation: [
+                self.game_state.text.position[0],
+                self.game_state.text.position[1],
+                self.game_state.text.rotation,
+                0.0,
+            ],
+
+            scale: [
+                self.game_state.text.scale[0],
+                self.game_state.text.scale[1],
+                0.0,
+                0.0,
+            ],
+
+            color: [
+                self.game_state.text.color[0],
+                self.game_state.text.color[1],
+                self.game_state.text.color[2],
+                self.game_state.text.opacity,
+            ],
+
+            camera_position: [0.0, 0.0],
+
+            camera_zoom: [1.0, 0.0],
+        };
+
+        renderer.queue.write_buffer(
+            &renderer.text_uniform_buffer,
+            0,
+            bytemuck::bytes_of(&text_uniforms),
+        );
 
         // ----------------------------------------------------
         // GPU OBJECTS
         // ----------------------------------------------------
 
         let surface = &renderer.surface;
-
         let device = &renderer.device;
-
         let queue = &renderer.queue;
 
         let uniform_buffer = &renderer.uniform_buffer;
-
         let uniform_bind_group = &renderer.uniform_bind_group;
 
+        let text_uniform_bind_group = &renderer.text_uniform_bind_group;
         let text_bind_group = &renderer.text_bind_group;
-
         let text_vertex_buffer = &renderer.text_vertex_buffer;
 
         let render_pipeline = &renderer.render_pipeline;
 
-        // ========================================================
+        // ====================================================
         // PLAYER TRANSFORM
-        // ========================================================
+        // ====================================================
 
         let player = match self.game_state.get_entity(0) {
             Some(player) => player,
             None => return,
         };
 
-        // ========================================================
-        // UPDATE UNIFORMS
-        // ========================================================
+        // ====================================================
+        // PLAYER UNIFORMS
+        // ====================================================
 
         let uniforms = Uniforms {
             position_rotation: [
@@ -192,6 +219,8 @@ impl App {
                 0.0,
             ],
 
+            // Sprite texture must remain white so that the
+            // original texture color is preserved.
             color: [1.0, 1.0, 1.0, 1.0],
 
             camera_position: [
@@ -201,6 +230,7 @@ impl App {
 
             camera_zoom: [self.game_state.camera.zoom, 0.0],
         };
+
         queue.write_buffer(uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
 
         // ----------------------------------------------------
@@ -214,13 +244,11 @@ impl App {
 
             wgpu::CurrentSurfaceTexture::Outdated => {
                 surface.configure(&renderer.device, &renderer.config);
-
                 return;
             }
 
             wgpu::CurrentSurfaceTexture::Lost => {
                 surface.configure(&renderer.device, &renderer.config);
-
                 return;
             }
 
@@ -296,34 +324,39 @@ impl App {
             render_pass.set_pipeline(render_pipeline);
 
             // =================================================
-            // UNIFORMS
+            // SPRITE
             // =================================================
 
             render_pass.set_bind_group(0, uniform_bind_group, &[]);
-
-            // =================================================
-            // SPRITE
-            // =================================================
 
             if let (Some(bind_group), Some(vertex_buffer)) = (
                 self.player_sprite_bind_group.as_ref(),
                 self.player_sprite_vertex_buffer.as_ref(),
             ) {
                 render_pass.set_bind_group(1, bind_group, &[]);
+
                 render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+
                 render_pass.draw(0..self.player_sprite_vertex_count, 0..1);
             }
+
             // =================================================
             // TEXT
             // =================================================
+            //
+            // Text uses its own uniform bind group so text
+            // color/transform cannot affect the sprite.
+            // =================================================
 
-            render_pass.set_bind_group(0, &renderer.text_uniform_bind_group, &[]);
+            if self.game_state.text.visible && self.game_state.text.opacity > 0.0 {
+                render_pass.set_bind_group(0, text_uniform_bind_group, &[]);
 
-            render_pass.set_bind_group(1, text_bind_group, &[]);
+                render_pass.set_bind_group(1, text_bind_group, &[]);
 
-            render_pass.set_vertex_buffer(0, text_vertex_buffer.slice(..));
+                render_pass.set_vertex_buffer(0, text_vertex_buffer.slice(..));
 
-            render_pass.draw(0..renderer.text_vertex_count, 0..1);
+                render_pass.draw(0..renderer.text_vertex_count, 0..1);
+            }
         }
 
         // ----------------------------------------------------
@@ -364,6 +397,10 @@ impl ApplicationHandler for App {
 
         let renderer = Renderer::new(window.clone(), &self.game_state.text);
 
+        // ====================================================
+        // PLAYER SPRITE
+        // ====================================================
+
         let sprite = Sprite::from_file(
             &renderer.device,
             &renderer.queue,
@@ -375,6 +412,10 @@ impl ApplicationHandler for App {
             player.set_sprite(sprite);
         }
 
+        // ====================================================
+        // CREATE PLAYER GPU RESOURCES
+        // ====================================================
+
         if let Some(player) = self.game_state.get_entity(0) {
             if let Some(sprite) = &player.sprite {
                 let bind_group = renderer.create_sprite_bind_group(sprite);
@@ -382,7 +423,9 @@ impl ApplicationHandler for App {
                 let (vertex_buffer, vertex_count) = renderer.create_sprite_vertex_buffer(sprite);
 
                 self.player_sprite_bind_group = Some(bind_group);
+
                 self.player_sprite_vertex_buffer = Some(vertex_buffer);
+
                 self.player_sprite_vertex_count = vertex_count;
             }
         }
@@ -400,25 +443,15 @@ impl ApplicationHandler for App {
         // ====================================================
 
         println!("================================");
-
         println!("East Engine v0.4 initialized!");
-
         println!("Texture rendering enabled");
-
         println!("Sprite rendering enabled");
-
         println!("Text rendering enabled");
-
         println!("Text: Hello East Engine");
-
         println!("WASD = Move");
-
         println!("I/O = Change speed");
-
         println!("F = Fullscreen");
-
         println!("Escape = Exit");
-
         println!("================================");
 
         // ====================================================
@@ -469,7 +502,6 @@ impl ApplicationHandler for App {
                     if key_code == KeyCode::Escape {
                         if pressed {
                             println!("Escape pressed");
-
                             event_loop.exit();
                         }
 
