@@ -108,6 +108,12 @@ impl App {
 
         self.game_state.update();
 
+        if let Some(renderer) = self.renderer.as_mut() {
+            if renderer.text_revision != self.game_state.text.revision() {
+                renderer.update_text(&self.game_state.text);
+            }
+        }
+
         // ----------------------------------------------------
         // GET RENDERER
         // ----------------------------------------------------
