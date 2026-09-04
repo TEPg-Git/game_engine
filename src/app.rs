@@ -333,7 +333,7 @@ impl ApplicationHandler for App {
         // RENDERER
         // ====================================================
 
-        let renderer = Renderer::new(window.clone());
+        let renderer = Renderer::new(window.clone(), &self.game_state.text);
 
         let sprite = Sprite::from_file(
             &renderer.device,

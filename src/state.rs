@@ -1,6 +1,7 @@
 use crate::camera::Camera;
 use crate::entity::Entity;
 use crate::input::KeyboardState;
+use crate::text::Text;
 
 // ============================================================
 // GAME STATE
@@ -31,6 +32,11 @@ pub struct GameState {
     // NEXT ENTITY ID
     // ========================================================
     next_entity_id: u32,
+
+    // ========================================================
+    // TEXT
+    // ========================================================
+    pub text: Text,
 }
 
 // ============================================================
@@ -53,6 +59,8 @@ impl GameState {
             speed: 0.001,
 
             next_entity_id: 0,
+
+            text: Text::new("Hello East Engine", 24.0),
         };
 
         // ========================================================

@@ -5,7 +5,7 @@ use winit::window::Window;
 
 use crate::graphics::{Uniforms, Vertex};
 use crate::sprite::Sprite;
-use crate::text::{create_text_bitmap, load_font};
+use crate::text::{Text, create_text_bitmap, load_font};
 
 // ============================================================
 // RENDERER
@@ -47,7 +47,7 @@ pub struct Renderer {
 // ============================================================
 
 impl Renderer {
-    pub fn new(window: Arc<Window>) -> Self {
+    pub fn new(window: Arc<Window>, text: &Text) -> Self {
         // ====================================================
         // WGPU INSTANCE
         // ====================================================
@@ -193,17 +193,14 @@ impl Renderer {
         // TEXT
         // ====================================================
 
-        let text = "Hello East Engine";
-
-        let font_size = 24.0;
-
-        println!("Rendering text: {}", text);
+        println!("Rendering text: {}", text.content);
 
         // ====================================================
         // CREATE TEXT BITMAP
         // ====================================================
 
-        let (rgba_data, text_width, text_height) = create_text_bitmap(&font, text, font_size);
+        let (rgba_data, text_width, text_height) =
+            create_text_bitmap(&font, &text.content, text.font_size);
 
         println!("Text size: {}x{}", text_width, text_height);
 

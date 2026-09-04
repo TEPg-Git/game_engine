@@ -9,6 +9,33 @@ const FONT_DATA: &[u8] = include_bytes!("../assets/fonts/Roboto-VariableFont_wdt
 pub fn load_font() -> Font {
     Font::from_bytes(FONT_DATA, fontdue::FontSettings::default()).expect("Failed to load font")
 }
+
+// ============================================================
+// TEXT
+// ============================================================
+
+pub struct Text {
+    pub content: String,
+    pub font_size: f32,
+}
+
+impl Text {
+    pub fn new(content: &str, font_size: f32) -> Self {
+        Self {
+            content: content.to_string(),
+            font_size,
+        }
+    }
+
+    pub fn set_content(&mut self, content: &str) {
+        self.content = content.to_string();
+    }
+
+    pub fn set_font_size(&mut self, font_size: f32) {
+        self.font_size = font_size;
+    }
+}
+
 // ============================================================
 // TEXT BITMAP
 // ============================================================
