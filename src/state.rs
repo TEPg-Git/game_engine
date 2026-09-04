@@ -60,7 +60,12 @@ impl GameState {
 
             next_entity_id: 0,
 
-            text: Text::new("Hello East Engine", 24.0),
+            text: {
+                let mut text = Text::new("Hello East Engine", 24.0);
+                text.set_position(-0.5, 0.7);
+                text.set_color(1.0, 0.0, 0.0, 1.0);
+                text
+            },
         };
 
         // ========================================================

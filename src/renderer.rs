@@ -29,6 +29,12 @@ pub struct Renderer {
     pub uniform_bind_group: wgpu::BindGroup,
 
     // ========================================================
+    // TEXT UNIFORM
+    // ========================================================
+    pub text_uniform_buffer: wgpu::Buffer,
+    pub text_uniform_bind_group: wgpu::BindGroup,
+
+    // ========================================================
     // TEXT
     // ========================================================
     pub text_texture: wgpu::Texture,
@@ -181,6 +187,32 @@ impl Renderer {
         });
 
         println!("Uniform bind group created!");
+
+        // ====================================================
+        // TEXT UNIFORM
+        // ====================================================
+        let text_uniforms = Uniforms {
+            position_rotation: [0.0, 0.0, 0.0, 0.0],
+            scale: [1.0, 1.0, 0.0, 0.0],
+            color: [1.0, 1.0, 1.0, 1.0],
+            camera_position: [0.0, 0.0],
+            camera_zoom: [1.0, 0.0],
+        };
+
+        let text_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Text Uniform Buffer"),
+            contents: bytemuck::bytes_of(&text_uniforms),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        let text_uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Text Uniform Bind Group"),
+            layout: &uniform_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: text_uniform_buffer.as_entire_binding(),
+            }],
+        });
 
         // ====================================================
         // LOAD FONT
@@ -564,6 +596,10 @@ impl Renderer {
             uniform_buffer,
 
             uniform_bind_group,
+
+            text_uniform_buffer,
+
+            text_uniform_bind_group,
 
             text_texture,
 

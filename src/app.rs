@@ -114,6 +114,27 @@ impl App {
             }
         }
 
+        if let Some(renderer) = self.renderer.as_ref() {
+            let text_uniforms = Uniforms {
+                position_rotation: [
+                    self.game_state.text.position[0],
+                    self.game_state.text.position[1],
+                    0.0,
+                    0.0,
+                ],
+                scale: [1.0, 1.0, 0.0, 0.0],
+                color: self.game_state.text.color,
+                camera_position: [0.0, 0.0],
+                camera_zoom: [1.0, 0.0],
+            };
+
+            renderer.queue.write_buffer(
+                &renderer.text_uniform_buffer,
+                0,
+                bytemuck::bytes_of(&text_uniforms),
+            );
+        }
+
         // ----------------------------------------------------
         // GET RENDERER
         // ----------------------------------------------------
@@ -171,7 +192,7 @@ impl App {
                 0.0,
             ],
 
-            color: [1.0, 0.0, 0.0, 1.0],
+            color: [1.0, 1.0, 1.0, 1.0],
 
             camera_position: [
                 self.game_state.camera.position[0],
@@ -295,6 +316,8 @@ impl App {
             // =================================================
             // TEXT
             // =================================================
+
+            render_pass.set_bind_group(0, &renderer.text_uniform_bind_group, &[]);
 
             render_pass.set_bind_group(1, text_bind_group, &[]);
 

@@ -121,12 +121,6 @@ var sprite_sampler: sampler;
 
 @fragment
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
-
-    let texture_color = textureSample(
-        sprite_texture,
-        sprite_sampler,
-        vertex.tex_coords
-    );
-
-    return texture_color;
+    let texture_color = textureSample(sprite_texture, sprite_sampler, vertex.tex_coords);
+    return texture_color * uniforms.color;
 }

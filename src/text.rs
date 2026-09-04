@@ -17,6 +17,8 @@ pub fn load_font() -> Font {
 pub struct Text {
     pub content: String,
     pub font_size: f32,
+    pub position: [f32; 2],
+    pub color: [f32; 4],
     revision: u64,
 }
 
@@ -25,6 +27,8 @@ impl Text {
         Self {
             content: content.to_string(),
             font_size,
+            position: [0.0, 0.0],
+            color: [1.0, 1.0, 1.0, 1.0],
             revision: 0,
         }
     }
@@ -36,6 +40,15 @@ impl Text {
 
     pub fn set_font_size(&mut self, font_size: f32) {
         self.font_size = font_size;
+        self.revision += 1;
+    }
+
+    pub fn set_position(&mut self, x: f32, y: f32) {
+        self.position = [x, y];
+    }
+
+    pub fn set_color(&mut self, r: f32, g: f32, b: f32, a: f32) {
+        self.color = [r, g, b, a];
         self.revision += 1;
     }
 
