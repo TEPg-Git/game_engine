@@ -22,6 +22,14 @@ pub struct RenderObject {
 }
 
 // ============================================================
+// TEXT OBJECT
+// ============================================================
+
+pub struct TextObject {
+    pub text: Text,
+}
+
+// ============================================================
 // RENDERER
 // ============================================================
 
@@ -67,6 +75,11 @@ pub struct Renderer {
     // SPRITE / OBJECTS
     // ========================================================
     pub render_objects: HashMap<u32, RenderObject>,
+
+    // ========================================================
+    // TEXT_OBJECTS
+    // ========================================================
+    pub text_objects: HashMap<u32, TextObject>,
 }
 
 // ============================================================
@@ -660,6 +673,8 @@ impl Renderer {
             render_pipeline,
 
             render_objects: HashMap::new(),
+
+            text_objects: HashMap::new(),
         }
     }
 
@@ -697,34 +712,31 @@ impl Renderer {
                 camera_zoom: [1.0, 0.0],
             };
 
-            let uniform_buffer = self.device.create_buffer_init(
-                &wgpu::util::BufferInitDescriptor {
-                    label: Some("Entity Uniform Buffer"),
+            let uniform_buffer =
+                self.device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("Entity Uniform Buffer"),
 
-                    contents: bytemuck::bytes_of(&uniforms),
+                        contents: bytemuck::bytes_of(&uniforms),
 
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                },
-            );
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    });
 
-            let uniform_bind_group = self.device.create_bind_group(
-                &wgpu::BindGroupDescriptor {
-                    label: Some("Entity Uniform Bind Group"),
+            let uniform_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Entity Uniform Bind Group"),
 
-                    layout: &self.uniform_bind_group_layout,
+                layout: &self.uniform_bind_group_layout,
 
-                    entries: &[wgpu::BindGroupEntry {
-                        binding: 0,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
 
-                        resource: uniform_buffer.as_entire_binding(),
-                    }],
-                },
-            );
+                    resource: uniform_buffer.as_entire_binding(),
+                }],
+            });
 
             let sprite_bind_group = self.create_sprite_bind_group(sprite);
 
-            let (vertex_buffer, vertex_count) =
-                self.create_sprite_vertex_buffer(sprite);
+            let (vertex_buffer, vertex_count) = self.create_sprite_vertex_buffer(sprite);
 
             let render_object = RenderObject {
                 uniform_buffer,

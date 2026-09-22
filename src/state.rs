@@ -61,6 +61,7 @@ pub struct GameState {
     // TEXT
     // ========================================================
     pub text: Text,
+    pub score_text: Text,
 }
 
 // ============================================================
@@ -100,6 +101,22 @@ impl GameState {
                 let mut text = Text::new("EAST ENGINE PONG GAME", 24.0);
 
                 text.set_position(0.0, 0.9);
+                text.set_color(1.0, 1.0, 1.0, 1.0);
+                text.set_alignment(TextAlignment::Center);
+                text.set_line_spacing(1.2);
+                text.set_letter_spacing(0.5);
+                text.set_scale(1.0, 1.0);
+                text.set_rotation(0.0);
+                text.set_opacity(1.0);
+                text.set_visible(true);
+                text.set_max_width(None);
+
+                text
+            },
+            score_text: {
+                let mut text = Text::new("0 - 0", 24.0);
+
+                text.set_position(0.0, 0.8);
                 text.set_color(1.0, 1.0, 1.0, 1.0);
                 text.set_alignment(TextAlignment::Center);
                 text.set_line_spacing(1.2);

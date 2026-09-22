@@ -393,7 +393,7 @@ impl ApplicationHandler for App {
             &renderer.device,
             &renderer.queue,
             "assets/textures/Ball.png",
-            [0.15, 0.15],
+            [0.2, 0.2],
         );
 
         // ====================================================
