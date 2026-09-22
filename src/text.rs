@@ -27,6 +27,7 @@ pub enum TextAlignment {
 // TEXT
 // ============================================================
 
+#[derive(Clone)]
 pub struct Text {
     pub content: String,
     pub font_size: f32,
