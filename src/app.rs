@@ -226,3 +226,121 @@ impl App {
     }
 
 
+
+    // ========================================================
+    // APPLICATION HANDLER
+    // ========================================================
+
+}
+
+impl ApplicationHandler for App {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        let window_attributes = Window::default_attributes().with_title("East Engine");
+        let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+
+        let mut renderer = Renderer::new(window.clone());
+
+        let sprite_player_1 = Sprite::from_file(
+            &renderer.device,
+            &renderer.queue,
+            "assets/textures/Player.png",
+            [0.05, 0.4],
+        );
+
+        let sprite_player_2 = Sprite::from_file(
+            &renderer.device,
+            &renderer.queue,
+            "assets/textures/Player.png",
+            [0.05, 0.4],
+        );
+
+        let sprite_ball = Sprite::from_file(
+            &renderer.device,
+            &renderer.queue,
+            "assets/textures/Ball.png",
+            [0.2, 0.2],
+        );
+
+        if let Some(entity) = self.game_state.get_entity_mut(self.game_state.player1_id) {
+            entity.set_sprite(sprite_player_1);
+        }
+
+        if let Some(entity) = self.game_state.get_entity_mut(self.game_state.player2_id) {
+            entity.set_sprite(sprite_player_2);
+        }
+
+        if let Some(entity) = self.game_state.get_entity_mut(self.game_state.ball_id) {
+            entity.set_sprite(sprite_ball);
+        }
+
+        for entity in &self.game_state.entities {
+            renderer.create_render_object(entity);
+        }
+
+        renderer.create_text_object(0, self.game_state.text.clone());
+        renderer.create_text_object(1, self.game_state.score_text.clone());
+
+        self.window = Some(window);
+        self.renderer = Some(renderer);
+
+        println!("================================");
+        println!("East Engine v0.4 initialized!");
+        println!("Texture rendering enabled");
+        println!("Sprite rendering enabled");
+        println!("Text rendering enabled");
+        println!("Pong game initialized");
+        println!("W/S = Player 1");
+        println!("Up/Down = Player 2");
+        println!("F = Fullscreen");
+        println!("Escape = Exit");
+        println!("================================");
+
+        if let Some(window) = &self.window {
+            window.request_redraw();
+        }
+    }
+
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        _window_id: WindowId,
+        event: WindowEvent,
+    ) {
+        match event {
+            WindowEvent::CloseRequested => {
+                event_loop.exit();
+            }
+
+            WindowEvent::Resized(size) => {
+                self.resize(size.width, size.height);
+            }
+
+            WindowEvent::KeyboardInput { event, .. } => {
+                let pressed = event.state == ElementState::Pressed;
+
+                if let PhysicalKey::Code(key_code) = event.physical_key {
+                    if key_code == KeyCode::Escape && pressed {
+                        event_loop.exit();
+                        return;
+                    }
+
+                    if key_code == KeyCode::KeyF && pressed {
+                        self.toggle_fullscreen();
+                    } else {
+                        self.game_state.keyboard.handle_keyboard(key_code, pressed);
+                    }
+                }
+            }
+
+            WindowEvent::RedrawRequested => {
+                self.render();
+
+                if let Some(window) = &self.window {
+                    window.request_redraw();
+                }
+            }
+
+            _ => {}
+        }
+    }
+}
