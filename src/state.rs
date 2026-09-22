@@ -86,7 +86,7 @@ impl GameState {
             player2_id: 0,
             ball_id: 0,
 
-            ball_velocity: [-0.5, 0.25],
+            ball_velocity: [-0.01, -1.5], //BALL VELOCITY
 
             camera: Camera::new(),
 
@@ -227,6 +227,24 @@ impl GameState {
 
         if let Some(ball) = self.get_entity_mut(self.ball_id) {
             ball.translate(ball_velocity[0] * delta_time, ball_velocity[1] * delta_time);
+        }
+
+        let mut bounced = false;
+
+        if let Some(ball) = self.get_entity_mut(self.ball_id) {
+            if ball.transform.position[1] > 1.0 {
+                ball.transform.position[1] = 1.0;
+                bounced = true;
+            }
+
+            if ball.transform.position[1] < -1.0 {
+                ball.transform.position[1] = -1.0;
+                bounced = true;
+            }
+        }
+
+        if bounced {
+            self.ball_velocity[1] = -self.ball_velocity[1];
         }
     }
 }
