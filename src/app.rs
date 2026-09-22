@@ -387,21 +387,21 @@ impl ApplicationHandler for App {
         let sprite_1 = Sprite::from_file(
             &renderer.device,
             &renderer.queue,
-            "assets/textures/Test.jpg",
+            "assets/textures/Player.png",
             [0.5, 0.5],
         );
 
         let sprite_2 = Sprite::from_file(
             &renderer.device,
             &renderer.queue,
-            "assets/textures/Test.jpg",
+            "assets/textures/Player.png",
             [0.5, 0.5],
         );
 
         let sprite_ball = Sprite::from_file(
             &renderer.device,
             &renderer.queue,
-            "assets/textures/Test.jpg",
+            "assets/textures/Ball.png",
             [0.2, 0.2],
         );
 
