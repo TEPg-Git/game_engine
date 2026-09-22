@@ -7,7 +7,7 @@ use winit::window::Window;
 use crate::entity::Entity;
 use crate::graphics::{Uniforms, Vertex};
 use crate::sprite::Sprite;
-use crate::text::{Text, create_text_bitmap_with_options, load_font};
+use crate::text::{create_text_bitmap_with_options, load_font, Text};
 
 // ============================================================
 // RENDER OBJECT
@@ -27,6 +27,13 @@ pub struct RenderObject {
 
 pub struct TextObject {
     pub text: Text,
+    pub uniform_buffer: wgpu::Buffer,
+    pub uniform_bind_group: wgpu::BindGroup,
+    pub text_texture: wgpu::Texture,
+    pub text_bind_group: wgpu::BindGroup,
+    pub vertex_buffer: wgpu::Buffer,
+    pub vertex_count: u32,
+    pub revision: u64,
 }
 
 // ============================================================
@@ -34,9 +41,6 @@ pub struct TextObject {
 // ============================================================
 
 pub struct Renderer {
-    // ========================================================
-    // WGPU
-    // ========================================================
     pub surface: wgpu::Surface<'static>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
@@ -44,41 +48,13 @@ pub struct Renderer {
 
     pub texture_bind_group_layout: wgpu::BindGroupLayout,
 
-    // ========================================================
-    // SPRITE / OBJECT UNIFORM
-    // ========================================================
     pub uniform_buffer: wgpu::Buffer,
     pub uniform_bind_group: wgpu::BindGroup,
     pub uniform_bind_group_layout: wgpu::BindGroupLayout,
 
-    // ========================================================
-    // TEXT UNIFORM
-    // ========================================================
-    pub text_uniform_buffer: wgpu::Buffer,
-    pub text_uniform_bind_group: wgpu::BindGroup,
-
-    // ========================================================
-    // TEXT
-    // ========================================================
-    pub text_texture: wgpu::Texture,
-    pub text_bind_group: wgpu::BindGroup,
-    pub text_vertex_buffer: wgpu::Buffer,
-    pub text_vertex_count: u32,
-    pub text_revision: u64,
-
-    // ========================================================
-    // PIPELINE
-    // ========================================================
     pub render_pipeline: wgpu::RenderPipeline,
 
-    // ========================================================
-    // SPRITE / OBJECTS
-    // ========================================================
     pub render_objects: HashMap<u32, RenderObject>,
-
-    // ========================================================
-    // TEXT_OBJECTS
-    // ========================================================
     pub text_objects: HashMap<u32, TextObject>,
 }
 
@@ -87,64 +63,35 @@ pub struct Renderer {
 // ============================================================
 
 impl Renderer {
-    // ========================================================
-    // NEW
-    // ========================================================
-
-    pub fn new(window: Arc<Window>, text: &Text) -> Self {
-        // ====================================================
-        // WGPU INSTANCE
-        // ====================================================
-
+    pub fn new(window: Arc<Window>) -> Self {
         let instance = wgpu::Instance::default();
-
-        // ====================================================
-        // SURFACE
-        // ====================================================
 
         let surface = instance.create_surface(window.clone()).unwrap();
 
-        // ====================================================
-        // ADAPTER
-        // ====================================================
-
-        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::default(),
-
-            force_fallback_adapter: false,
-
-            compatible_surface: Some(&surface),
-
-            apply_limit_buckets: false,
-        }))
+        let adapter = pollster::block_on(instance.request_adapter(
+            &wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::default(),
+                force_fallback_adapter: false,
+                compatible_surface: Some(&surface),
+                apply_limit_buckets: false,
+            },
+        ))
         .expect("Failed to find suitable GPU adapter");
 
         println!("GPU: {:?}", adapter.get_info());
 
-        // ====================================================
-        // DEVICE + QUEUE
-        // ====================================================
-
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("East Engine Device"),
-
-            required_features: wgpu::Features::empty(),
-
-            required_limits: wgpu::Limits::default(),
-
-            experimental_features: wgpu::ExperimentalFeatures::disabled(),
-
-            memory_hints: wgpu::MemoryHints::default(),
-
-            trace: wgpu::Trace::Off,
-        }))
-        .expect("Failed to create GPU device");
+        let (device, queue) =
+            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+                label: Some("East Engine Device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::default(),
+                experimental_features: wgpu::ExperimentalFeatures::disabled(),
+                memory_hints: wgpu::MemoryHints::default(),
+                trace: wgpu::Trace::Off,
+            }))
+            .expect("Failed to create GPU device");
 
         println!("Device created!");
-
-        // ====================================================
-        // SURFACE CONFIG
-        // ====================================================
 
         let size = window.inner_size();
 
@@ -156,541 +103,140 @@ impl Renderer {
 
         println!("Surface configured!");
 
-        // ====================================================
-        // OBJECT UNIFORM
-        // ====================================================
-
-        // White means "do not tint the sprite".
         let uniforms = Uniforms {
             position_rotation: [0.0, 0.0, 0.0, 0.0],
-
             scale: [1.0, 1.0, 0.0, 0.0],
-
             color: [1.0, 1.0, 1.0, 1.0],
-
             camera_position: [0.0, 0.0],
-
             camera_zoom: [1.0, 0.0],
         };
 
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
-
             contents: bytemuck::bytes_of(&uniforms),
-
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
-
-        println!("Uniform buffer created!");
-
-        // ====================================================
-        // UNIFORM BIND GROUP LAYOUT
-        // ====================================================
 
         let uniform_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Uniform Bind Group Layout"),
-
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
-
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
-
                         has_dynamic_offset: false,
-
                         min_binding_size: None,
                     },
-
                     count: None,
                 }],
             });
 
-        // ====================================================
-        // OBJECT UNIFORM BIND GROUP
-        // ====================================================
-
         let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Uniform Bind Group"),
-
             layout: &uniform_bind_group_layout,
-
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-
                 resource: uniform_buffer.as_entire_binding(),
             }],
         });
 
-        println!("Uniform bind group created!");
-
-        // ====================================================
-        // TEXT UNIFORM
-        // ====================================================
-
-        let text_uniforms = Uniforms {
-            position_rotation: [text.position[0], text.position[1], text.rotation, 0.0],
-
-            scale: [text.scale[0], text.scale[1], 0.0, 0.0],
-
-            color: [text.color[0], text.color[1], text.color[2], text.opacity],
-
-            camera_position: [0.0, 0.0],
-
-            camera_zoom: [1.0, 0.0],
-        };
-
-        let text_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Text Uniform Buffer"),
-
-            contents: bytemuck::bytes_of(&text_uniforms),
-
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-
-        let text_uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Text Uniform Bind Group"),
-
-            layout: &uniform_bind_group_layout,
-
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-
-                resource: text_uniform_buffer.as_entire_binding(),
-            }],
-        });
-
-        // ====================================================
-        // LOAD FONT
-        // ====================================================
-
-        let font = load_font();
-
-        println!("Font loaded successfully!");
-
-        // ====================================================
-        // CREATE TEXT BITMAP
-        // ====================================================
-
-        println!("Rendering text: {}", text.content);
-
-        let (rgba_data, text_width, text_height) = create_text_bitmap_with_options(
-            &font,
-            &text.content,
-            text.font_size,
-            text.line_spacing,
-            text.letter_spacing,
-            text.max_width,
-            text.alignment,
-        );
-
-        println!("Text size: {}x{}", text_width, text_height);
-
-        // ====================================================
-        // WGPU ROW PADDING
-        // ====================================================
-
-        let unpadded_bytes_per_row = text_width * 4;
-
-        let padded_bytes_per_row = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
-            * ((unpadded_bytes_per_row + wgpu::COPY_BYTES_PER_ROW_ALIGNMENT - 1)
-                / wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
-
-        // ====================================================
-        // PAD RGBA DATA
-        // ====================================================
-
-        let mut padded_data = vec![0u8; (padded_bytes_per_row * text_height) as usize];
-
-        for y in 0..text_height {
-            let source_start = (y * unpadded_bytes_per_row) as usize;
-
-            let source_end = source_start + unpadded_bytes_per_row as usize;
-
-            let destination_start = (y * padded_bytes_per_row) as usize;
-
-            let destination_end = destination_start + unpadded_bytes_per_row as usize;
-
-            padded_data[destination_start..destination_end]
-                .copy_from_slice(&rgba_data[source_start..source_end]);
-        }
-
-        // ====================================================
-        // CREATE TEXTURE
-        // ====================================================
-
-        let text_texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("Text Texture"),
-
-            size: wgpu::Extent3d {
-                width: text_width,
-
-                height: text_height,
-
-                depth_or_array_layers: 1,
-            },
-
-            mip_level_count: 1,
-
-            sample_count: 1,
-
-            dimension: wgpu::TextureDimension::D2,
-
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
-
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-
-            view_formats: &[],
-        });
-
-        // ====================================================
-        // UPLOAD TEXTURE
-        // ====================================================
-
-        queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &text_texture,
-
-                mip_level: 0,
-
-                origin: wgpu::Origin3d::ZERO,
-
-                aspect: wgpu::TextureAspect::All,
-            },
-            &padded_data,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-
-                bytes_per_row: Some(padded_bytes_per_row),
-
-                rows_per_image: Some(text_height),
-            },
-            wgpu::Extent3d {
-                width: text_width,
-
-                height: text_height,
-
-                depth_or_array_layers: 1,
-            },
-        );
-
-        println!("Text uploaded to GPU!");
-
-        // ====================================================
-        // TEXTURE VIEW
-        // ====================================================
-
-        let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-        // ====================================================
-        // SAMPLER
-        // ====================================================
-
-        let text_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("Text Sampler"),
-
-            mag_filter: wgpu::FilterMode::Linear,
-
-            min_filter: wgpu::FilterMode::Linear,
-
-            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
-
-            ..Default::default()
-        });
-
-        // ====================================================
-        // TEXTURE BIND GROUP LAYOUT
-        // ====================================================
-
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Texture Bind Group Layout"),
-
                 entries: &[
-                    // ====================================
-                    // TEXTURE
-                    // ====================================
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
-
                         visibility: wgpu::ShaderStages::FRAGMENT,
-
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Float { filterable: true },
-
                             view_dimension: wgpu::TextureViewDimension::D2,
-
                             multisampled: false,
                         },
-
                         count: None,
                     },
-                    // ====================================
-                    // SAMPLER
-                    // ====================================
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
-
                         visibility: wgpu::ShaderStages::FRAGMENT,
-
                         ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-
                         count: None,
                     },
                 ],
             });
 
-        // ====================================================
-        // TEXT BIND GROUP
-        // ====================================================
-
-        let text_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Text Bind Group"),
-
-            layout: &texture_bind_group_layout,
-
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-
-                    resource: wgpu::BindingResource::TextureView(&text_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-
-                    resource: wgpu::BindingResource::Sampler(&text_sampler),
-                },
-            ],
-        });
-
-        println!("Text bind group created!");
-
-        // ====================================================
-        // TEXT SIZE IN SCREEN SPACE
-        // ====================================================
-
-        let screen_width = size.width.max(1) as f32;
-
-        let screen_height = size.height.max(1) as f32;
-
-        let text_width_ndc = (text_width as f32 / screen_width) * 2.0;
-
-        let text_height_ndc = (text_height as f32 / screen_height) * 2.0;
-
-        let half_width = text_width_ndc / 2.0;
-
-        let half_height = text_height_ndc / 2.0;
-
-        // ====================================================
-        // TEXT QUAD
-        // ====================================================
-
-        let text_vertices = [
-            Vertex {
-                position: [-half_width, half_height],
-
-                tex_coords: [0.0, 0.0],
-            },
-            Vertex {
-                position: [half_width, half_height],
-
-                tex_coords: [1.0, 0.0],
-            },
-            Vertex {
-                position: [-half_width, -half_height],
-
-                tex_coords: [0.0, 1.0],
-            },
-            Vertex {
-                position: [half_width, half_height],
-
-                tex_coords: [1.0, 0.0],
-            },
-            Vertex {
-                position: [half_width, -half_height],
-
-                tex_coords: [1.0, 1.0],
-            },
-            Vertex {
-                position: [-half_width, -half_height],
-
-                tex_coords: [0.0, 1.0],
-            },
-        ];
-
-        // ====================================================
-        // TEXT VERTEX BUFFER
-        // ====================================================
-
-        let text_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Text Vertex Buffer"),
-
-            contents: bytemuck::cast_slice(&text_vertices),
-
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-
-        let text_vertex_count = text_vertices.len() as u32;
-
-        println!("Text vertex buffer created!");
-
-        // ====================================================
-        // SHADER
-        // ====================================================
-
         let shader_source = include_str!("shader.wgsl");
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("East Engine Shader"),
-
             source: wgpu::ShaderSource::Wgsl(shader_source.into()),
         });
 
-        println!("Shader created!");
-
-        // ====================================================
-        // PIPELINE LAYOUT
-        // ====================================================
-
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("East Engine Pipeline Layout"),
-
             bind_group_layouts: &[
                 Some(&uniform_bind_group_layout),
                 Some(&texture_bind_group_layout),
             ],
-
             immediate_size: 0,
         });
 
-        println!("Pipeline layout created!");
-
-        // ====================================================
-        // RENDER PIPELINE
-        // ====================================================
-
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("East Engine Render Pipeline"),
-
             layout: Some(&pipeline_layout),
-
             vertex: wgpu::VertexState {
                 module: &shader,
-
                 entry_point: Some("vs_main"),
-
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
-
                 buffers: &[Some(Vertex::layout())],
             },
-
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
-
                 strip_index_format: None,
-
                 front_face: wgpu::FrontFace::Ccw,
-
                 cull_mode: None,
-
                 unclipped_depth: false,
-
                 polygon_mode: wgpu::PolygonMode::Fill,
-
                 conservative: false,
             },
-
             depth_stencil: None,
-
             multisample: wgpu::MultisampleState {
                 count: 1,
-
                 mask: !0,
-
                 alpha_to_coverage_enabled: false,
             },
-
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
-
                 entry_point: Some("fs_main"),
-
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
-
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
-
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-
             multiview_mask: None,
-
             cache: None,
         });
 
         println!("Render pipeline created!");
 
-        // ====================================================
-        // RETURN
-        // ====================================================
-
         Self {
             surface,
-
             device,
-
             queue,
-
             config,
-
             texture_bind_group_layout,
-
             uniform_buffer,
-
             uniform_bind_group,
-
             uniform_bind_group_layout,
-
-            text_uniform_buffer,
-
-            text_uniform_bind_group,
-
-            text_texture,
-
-            text_bind_group,
-
-            text_vertex_buffer,
-
-            text_vertex_count,
-
-            text_revision: text.revision(),
-
             render_pipeline,
-
             render_objects: HashMap::new(),
-
             text_objects: HashMap::new(),
         }
     }
 
-    // ========================================================
-    // CREATE RENDER OBJECT
-    // ========================================================
-
     pub fn create_render_object(&mut self, entity: &Entity) {
         if let Some(sprite) = &entity.sprite {
-            // Each entity gets its own uniform buffer.
-            //
-            // A shared uniform buffer cannot be updated with
-            // queue.write_buffer() once per draw and then expected
-            // to retain a different value for each draw. The writes
-            // are submitted to the GPU before the render pass executes,
-            // so every draw would see the final written transform.
             let uniforms = Uniforms {
                 position_rotation: [
                     entity.transform.position[0],
@@ -698,16 +244,13 @@ impl Renderer {
                     entity.transform.rotation,
                     0.0,
                 ],
-
                 scale: [
                     entity.transform.scale[0],
                     entity.transform.scale[1],
                     0.0,
                     0.0,
                 ],
-
                 color: [1.0, 1.0, 1.0, 1.0],
-
                 camera_position: [0.0, 0.0],
                 camera_zoom: [1.0, 0.0],
             };
@@ -716,136 +259,38 @@ impl Renderer {
                 self.device
                     .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                         label: Some("Entity Uniform Buffer"),
-
                         contents: bytemuck::bytes_of(&uniforms),
-
                         usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                     });
 
-            let uniform_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Entity Uniform Bind Group"),
-
-                layout: &self.uniform_bind_group_layout,
-
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-
-                    resource: uniform_buffer.as_entire_binding(),
-                }],
-            });
+            let uniform_bind_group =
+                self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("Entity Uniform Bind Group"),
+                    layout: &self.uniform_bind_group_layout,
+                    entries: &[wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: uniform_buffer.as_entire_binding(),
+                    }],
+                });
 
             let sprite_bind_group = self.create_sprite_bind_group(sprite);
-
             let (vertex_buffer, vertex_count) = self.create_sprite_vertex_buffer(sprite);
 
-            let render_object = RenderObject {
-                uniform_buffer,
-                uniform_bind_group,
-                sprite_bind_group,
-                vertex_buffer,
-                vertex_count,
-            };
-
-            self.render_objects.insert(entity.id, render_object);
+            self.render_objects.insert(
+                entity.id,
+                RenderObject {
+                    uniform_buffer,
+                    uniform_bind_group,
+                    sprite_bind_group,
+                    vertex_buffer,
+                    vertex_count,
+                },
+            );
         }
     }
 
-    // ========================================================
-    // SPRITE BIND GROUP
-    // ========================================================
-
-    pub fn create_sprite_bind_group(&self, sprite: &Sprite) -> wgpu::BindGroup {
-        self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Sprite Bind Group"),
-
-            layout: &self.texture_bind_group_layout,
-
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-
-                    resource: wgpu::BindingResource::TextureView(&sprite.texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-
-                    resource: wgpu::BindingResource::Sampler(&sprite.texture.sampler),
-                },
-            ],
-        })
-    }
-
-    // ========================================================
-    // SPRITE VERTEX BUFFER
-    // ========================================================
-
-    pub fn create_sprite_vertex_buffer(&self, sprite: &Sprite) -> (wgpu::Buffer, u32) {
-        let half_width = sprite.size[0] / 2.0;
-
-        let half_height = sprite.size[1] / 2.0;
-
-        let vertices = [
-            Vertex {
-                position: [-half_width, half_height],
-
-                tex_coords: [0.0, 0.0],
-            },
-            Vertex {
-                position: [half_width, half_height],
-
-                tex_coords: [1.0, 0.0],
-            },
-            Vertex {
-                position: [-half_width, -half_height],
-
-                tex_coords: [0.0, 1.0],
-            },
-            Vertex {
-                position: [half_width, half_height],
-
-                tex_coords: [1.0, 0.0],
-            },
-            Vertex {
-                position: [half_width, -half_height],
-
-                tex_coords: [1.0, 1.0],
-            },
-            Vertex {
-                position: [-half_width, -half_height],
-
-                tex_coords: [0.0, 1.0],
-            },
-        ];
-
-        let vertex_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Sprite Vertex Buffer"),
-
-                contents: bytemuck::cast_slice(&vertices),
-
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-
-        let vertex_count = vertices.len() as u32;
-
-        (vertex_buffer, vertex_count)
-    }
-
-    // ========================================================
-    // UPDATE TEXT
-    // ========================================================
-
-    pub fn update_text(&mut self, text: &Text) {
-        // ====================================================
-        // LOAD FONT
-        // ====================================================
-
+    pub fn create_text_object(&mut self, id: u32, text: Text) {
         let font = load_font();
-
-        // ====================================================
-        // CREATE TEXT BITMAP
-        // ====================================================
 
         let (rgba_data, text_width, text_height) = create_text_bitmap_with_options(
             &font,
@@ -857,223 +302,262 @@ impl Renderer {
             text.alignment,
         );
 
-        println!(
-            "Text updated: {} ({}x{})",
-            text.content, text_width, text_height
+        let text_texture = self.create_text_texture(&rgba_data, text_width, text_height);
+        let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        let text_sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("Text Sampler"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let text_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Text Bind Group"),
+            layout: &self.texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&text_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&text_sampler),
+                },
+            ],
+        });
+
+        let (vertex_buffer, vertex_count) =
+            self.create_text_vertex_buffer(text_width, text_height);
+
+        let uniforms = Self::text_uniforms(&text);
+
+        let uniform_buffer =
+            self.device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Text Uniform Buffer"),
+                    contents: bytemuck::bytes_of(&uniforms),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                });
+
+        let uniform_bind_group =
+            self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Text Uniform Bind Group"),
+                layout: &self.uniform_bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buffer.as_entire_binding(),
+                }],
+            });
+
+        self.text_objects.insert(
+            id,
+            TextObject {
+                revision: text.revision(),
+                text,
+                uniform_buffer,
+                uniform_bind_group,
+                text_texture,
+                text_bind_group,
+                vertex_buffer,
+                vertex_count,
+            },
         );
+    }
 
-        // ====================================================
-        // WGPU ROW PADDING
-        // ====================================================
-
+    fn create_text_texture(
+        &self,
+        rgba_data: &[u8],
+        text_width: u32,
+        text_height: u32,
+    ) -> wgpu::Texture {
         let unpadded_bytes_per_row = text_width * 4;
 
         let padded_bytes_per_row = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
             * ((unpadded_bytes_per_row + wgpu::COPY_BYTES_PER_ROW_ALIGNMENT - 1)
                 / wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
 
-        // ====================================================
-        // PAD RGBA DATA
-        // ====================================================
-
         let mut padded_data = vec![0u8; (padded_bytes_per_row * text_height) as usize];
 
         for y in 0..text_height {
             let source_start = (y * unpadded_bytes_per_row) as usize;
-
             let source_end = source_start + unpadded_bytes_per_row as usize;
-
             let destination_start = (y * padded_bytes_per_row) as usize;
-
             let destination_end = destination_start + unpadded_bytes_per_row as usize;
 
             padded_data[destination_start..destination_end]
                 .copy_from_slice(&rgba_data[source_start..source_end]);
         }
 
-        // ====================================================
-        // CREATE TEXTURE
-        // ====================================================
-
-        let text_texture = self.device.create_texture(&wgpu::TextureDescriptor {
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Text Texture"),
-
             size: wgpu::Extent3d {
                 width: text_width,
-
                 height: text_height,
-
                 depth_or_array_layers: 1,
             },
-
             mip_level_count: 1,
-
             sample_count: 1,
-
             dimension: wgpu::TextureDimension::D2,
-
             format: wgpu::TextureFormat::Rgba8UnormSrgb,
-
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-
             view_formats: &[],
         });
 
-        // ====================================================
-        // UPLOAD
-        // ====================================================
-
         self.queue.write_texture(
             wgpu::TexelCopyTextureInfo {
-                texture: &text_texture,
-
+                texture: &texture,
                 mip_level: 0,
-
                 origin: wgpu::Origin3d::ZERO,
-
                 aspect: wgpu::TextureAspect::All,
             },
             &padded_data,
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-
                 bytes_per_row: Some(padded_bytes_per_row),
-
                 rows_per_image: Some(text_height),
             },
             wgpu::Extent3d {
                 width: text_width,
-
                 height: text_height,
-
                 depth_or_array_layers: 1,
             },
         );
 
-        // ====================================================
-        // VIEW
-        // ====================================================
+        texture
+    }
 
-        let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-        // ====================================================
-        // SAMPLER
-        // ====================================================
-
-        let text_sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("Text Sampler"),
-
-            mag_filter: wgpu::FilterMode::Linear,
-
-            min_filter: wgpu::FilterMode::Linear,
-
-            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
-
-            ..Default::default()
-        });
-
-        // ====================================================
-        // TEXT BIND GROUP
-        // ====================================================
-
-        let text_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Text Bind Group"),
-
-            layout: &self.texture_bind_group_layout,
-
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-
-                    resource: wgpu::BindingResource::TextureView(&text_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-
-                    resource: wgpu::BindingResource::Sampler(&text_sampler),
-                },
-            ],
-        });
-
-        // ====================================================
-        // TEXT SIZE IN SCREEN SPACE
-        // ====================================================
-
+    fn create_text_vertex_buffer(
+        &self,
+        text_width: u32,
+        text_height: u32,
+    ) -> (wgpu::Buffer, u32) {
         let screen_width = self.config.width.max(1) as f32;
-
         let screen_height = self.config.height.max(1) as f32;
 
         let text_width_ndc = (text_width as f32 / screen_width) * 2.0;
-
         let text_height_ndc = (text_height as f32 / screen_height) * 2.0;
 
         let half_width = text_width_ndc / 2.0;
-
         let half_height = text_height_ndc / 2.0;
 
-        // ====================================================
-        // TEXT QUAD
-        // ====================================================
-
-        let text_vertices = [
+        let vertices = [
             Vertex {
                 position: [-half_width, half_height],
-
                 tex_coords: [0.0, 0.0],
             },
             Vertex {
                 position: [half_width, half_height],
-
                 tex_coords: [1.0, 0.0],
             },
             Vertex {
                 position: [-half_width, -half_height],
-
                 tex_coords: [0.0, 1.0],
             },
             Vertex {
                 position: [half_width, half_height],
-
                 tex_coords: [1.0, 0.0],
             },
             Vertex {
                 position: [half_width, -half_height],
-
                 tex_coords: [1.0, 1.0],
             },
             Vertex {
                 position: [-half_width, -half_height],
-
                 tex_coords: [0.0, 1.0],
             },
         ];
 
-        // ====================================================
-        // VERTEX BUFFER
-        // ====================================================
-
-        let text_vertex_buffer =
+        let vertex_buffer =
             self.device
                 .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("Text Vertex Buffer"),
-
-                    contents: bytemuck::cast_slice(&text_vertices),
-
+                    contents: bytemuck::cast_slice(&vertices),
                     usage: wgpu::BufferUsages::VERTEX,
                 });
 
-        // ====================================================
-        // STORE
-        // ====================================================
+        (vertex_buffer, vertices.len() as u32)
+    }
 
-        self.text_texture = text_texture;
+    fn text_uniforms(text: &Text) -> Uniforms {
+        Uniforms {
+            position_rotation: [text.position[0], text.position[1], text.rotation, 0.0],
+            scale: [text.scale[0], text.scale[1], 0.0, 0.0],
+            color: [text.color[0], text.color[1], text.color[2], text.opacity],
+            camera_position: [0.0, 0.0],
+            camera_zoom: [1.0, 0.0],
+        }
+    }
 
-        self.text_bind_group = text_bind_group;
+    pub fn update_text_object(&mut self, id: u32, text: &Text) {
+        let needs_bitmap_update = self
+            .text_objects
+            .get(&id)
+            .map(|object| object.revision != text.revision())
+            .unwrap_or(true);
 
-        self.text_vertex_buffer = text_vertex_buffer;
+        if needs_bitmap_update {
+            let font = load_font();
 
-        self.text_vertex_count = text_vertices.len() as u32;
+            let (rgba_data, text_width, text_height) = create_text_bitmap_with_options(
+                &font,
+                &text.content,
+                text.font_size,
+                text.line_spacing,
+                text.letter_spacing,
+                text.max_width,
+                text.alignment,
+            );
 
-        self.text_revision = text.revision();
+            let text_texture = self.create_text_texture(&rgba_data, text_width, text_height);
+            let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+            let text_sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
+                label: Some("Text Sampler"),
+                mag_filter: wgpu::FilterMode::Linear,
+                min_filter: wgpu::FilterMode::Linear,
+                mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+                ..Default::default()
+            });
+
+            let text_bind_group =
+                self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("Text Bind Group"),
+                    layout: &self.texture_bind_group_layout,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: wgpu::BindingResource::TextureView(&text_view),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: wgpu::BindingResource::Sampler(&text_sampler),
+                        },
+                    ],
+                });
+
+            let (vertex_buffer, vertex_count) =
+                self.create_text_vertex_buffer(text_width, text_height);
+
+            if let Some(object) = self.text_objects.get_mut(&id) {
+                object.text_texture = text_texture;
+                object.text_bind_group = text_bind_group;
+                object.vertex_buffer = vertex_buffer;
+                object.vertex_count = vertex_count;
+                object.revision = text.revision();
+            }
+        }
+
+        if let Some(object) = self.text_objects.get_mut(&id) {
+            let uniforms = Self::text_uniforms(text);
+
+            self.queue.write_buffer(
+                &object.uniform_buffer,
+                0,
+                bytemuck::bytes_of(&uniforms),
+            );
+            object.text = text.clone();
+        }
     }
 }
