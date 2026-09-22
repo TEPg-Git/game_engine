@@ -84,7 +84,7 @@ impl GameState {
             player2_id: 0,
             ball_id: 0,
 
-            ball_velocity: [-0.001, 0.0005],
+            ball_velocity: [-0.5, 0.25],
 
             camera: Camera::new(),
 
@@ -232,7 +232,7 @@ impl GameState {
             }
 
             if key_s {
-                player_1.translate(0.0, speed * delta_time);
+                player_1.translate(0.0, -speed * delta_time);
             }
         }
         // ====================================================
@@ -246,7 +246,7 @@ impl GameState {
             }
 
             if key_down {
-                player_2.translate(0.0, speed * delta_time);
+                player_2.translate(0.0, -speed * delta_time);
             }
         }
 
@@ -255,7 +255,7 @@ impl GameState {
         // ====================================================
         let ball_velocity = self.ball_velocity;
         if let Some(ball) = self.get_entity_mut(self.ball_id) {
-            ball.translate(ball_velocity[0], ball_velocity[1]);
+            ball.translate(ball_velocity[0] * delta_time, ball_velocity[1] * delta_time);
         }
 
         // ====================================================
