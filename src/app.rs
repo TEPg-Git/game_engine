@@ -1,4 +1,5 @@
 use crate::sprite::Sprite;
+use crate::time::Time;
 use std::sync::Arc;
 
 use winit::{
@@ -28,6 +29,8 @@ pub struct App {
 
     // GAME STATE
     game_state: GameState,
+
+    time: Time,
 }
 
 // ============================================================
@@ -42,6 +45,8 @@ impl App {
             renderer: None,
 
             game_state: GameState::new(),
+
+            time: Time::new(),
         }
     }
 
@@ -95,8 +100,9 @@ impl App {
         // ----------------------------------------------------
         // UPDATE GAME STATE
         // ----------------------------------------------------
-
-        self.game_state.update();
+        self.time.update(); // Update the time
+        let delta_time = self.time.delta_time(); // Get the delta time
+        self.game_state.update(delta_time); // Update the game state
 
         // ----------------------------------------------------
         // GET RENDERER
@@ -384,14 +390,13 @@ impl ApplicationHandler for App {
         // SPRITES
         // ====================================================
 
-        let sprite_1 = Sprite::from_file(
+        let sprite_player_1 = Sprite::from_file(
             &renderer.device,
             &renderer.queue,
             "assets/textures/Player.png",
             [0.5, 0.5],
         );
-
-        let sprite_2 = Sprite::from_file(
+        let sprite_player_2 = Sprite::from_file(
             &renderer.device,
             &renderer.queue,
             "assets/textures/Player.png",
@@ -410,11 +415,11 @@ impl ApplicationHandler for App {
         // ====================================================
 
         if let Some(entity) = self.game_state.get_entity_mut(self.game_state.player1_id) {
-            entity.set_sprite(sprite_1);
+            entity.set_sprite(sprite_player_1);
         }
 
         if let Some(entity) = self.game_state.get_entity_mut(self.game_state.player2_id) {
-            entity.set_sprite(sprite_2);
+            entity.set_sprite(sprite_player_2);
         }
 
         if let Some(entity) = self.game_state.get_entity_mut(self.game_state.ball_id) {

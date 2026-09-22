@@ -215,7 +215,7 @@ impl GameState {
     // UPDATE
     // ========================================================
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self, delta_time: f32) {
         // ====================================================
         // PLAYER_1
         // ====================================================
@@ -228,11 +228,11 @@ impl GameState {
             // ------------------------------------------------
 
             if key_w {
-                player_1.translate(0.0, speed);
+                player_1.translate(0.0, speed * delta_time);
             }
 
             if key_s {
-                player_1.translate(0.0, -speed);
+                player_1.translate(0.0, speed * delta_time);
             }
         }
         // ====================================================
@@ -242,11 +242,11 @@ impl GameState {
         let key_down = self.keyboard.down;
         if let Some(player_2) = self.get_entity_mut(self.player2_id) {
             if key_up {
-                player_2.translate(0.0, speed);
+                player_2.translate(0.0, speed * delta_time);
             }
 
             if key_down {
-                player_2.translate(0.0, -speed);
+                player_2.translate(0.0, speed * delta_time);
             }
         }
 

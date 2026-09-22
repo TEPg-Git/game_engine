@@ -8,6 +8,7 @@ mod sprite;
 mod state;
 mod text;
 mod texture;
+mod time;
 mod transform;
 
 use app::App;
