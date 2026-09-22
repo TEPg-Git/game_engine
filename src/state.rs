@@ -9,6 +9,17 @@ use crate::text::{Text, TextAlignment};
 
 pub struct GameState {
     // ========================================================
+    // SCORE
+    // ========================================================
+    pub score_1: u32,
+    pub score_2: u32,
+
+    // ========================================================
+    // MAX SCORE
+    // ========================================================
+    pub max_score: u32,
+
+    // ========================================================
     // INPUT
     // ========================================================
     pub keyboard: KeyboardState,
@@ -17,6 +28,17 @@ pub struct GameState {
     // ENTITIES
     // ========================================================
     pub entities: Vec<Entity>,
+
+    // ========================================================
+    // TWO PLAYER AND BALL ID
+    // ========================================================
+    pub player1_id: u32,
+    pub player2_id: u32,
+    pub ball_id: u32,
+    // ========================================================
+    // BALL VELOCITY
+    // ========================================================
+    pub ball_velocity: [f32; 2],
 
     // ========================================================
     // CAMERA
@@ -50,9 +72,19 @@ impl GameState {
 
     pub fn new() -> Self {
         let mut game_state = Self {
+            score_1: 0,
+            score_2: 0,
+            max_score: 5,
+
             keyboard: KeyboardState::default(),
 
             entities: Vec::new(),
+
+            player1_id: 0,
+            player2_id: 0,
+            ball_id: 0,
+
+            ball_velocity: [-0.001, 0.0005],
 
             camera: Camera::new(),
 
@@ -65,7 +97,7 @@ impl GameState {
                 // TEXT CONTENT
                 // ------------------------------------------------
 
-                let mut text = Text::new("EAST ENGINE\n2D TEXT SYSTEM", 24.0);
+                let mut text = Text::new("EAST ENGINE\nPONG GAME", 24.0);
 
                 // ------------------------------------------------
                 // POSITION
@@ -137,10 +169,12 @@ impl GameState {
         };
 
         // ========================================================
-        // PLAYER
+        // PLAYERS AND BALL
         // ========================================================
 
-        game_state.create_entity("Player");
+        game_state.player1_id = game_state.create_entity("Player_1");
+        game_state.player2_id = game_state.create_entity("Player_2");
+        game_state.ball_id = game_state.create_entity("Ball");
 
         game_state
     }
@@ -183,67 +217,45 @@ impl GameState {
 
     pub fn update(&mut self) {
         // ====================================================
-        // PLAYER
+        // PLAYER_1
         // ====================================================
-
-        if let Some(player) = self
-            .entities
-            .iter_mut()
-            .find(|entity| entity.name == "Player")
-        {
+        let key_w = self.keyboard.w;
+        let key_s = self.keyboard.s;
+        let speed = self.speed;
+        if let Some(player_1) = self.get_entity_mut(self.player1_id) {
             // ------------------------------------------------
-            // MOVEMENT
+            // MOVEMENT     ONLY UP AND DOWN
             // ------------------------------------------------
 
-            if self.keyboard.w {
-                player.translate(0.0, self.speed);
+            if key_w {
+                player_1.translate(0.0, speed);
             }
 
-            if self.keyboard.s {
-                player.translate(0.0, -self.speed);
+            if key_s {
+                player_1.translate(0.0, -speed);
+            }
+        }
+        // ====================================================
+        // PLAYER_2
+        // ====================================================
+        let key_up = self.keyboard.up;
+        let key_down = self.keyboard.down;
+        if let Some(player_2) = self.get_entity_mut(self.player2_id) {
+            if key_up {
+                player_2.translate(0.0, speed);
             }
 
-            if self.keyboard.a {
-                player.translate(-self.speed, 0.0);
+            if key_down {
+                player_2.translate(0.0, -speed);
             }
+        }
 
-            if self.keyboard.d {
-                player.translate(self.speed, 0.0);
-            }
-
-            // ------------------------------------------------
-            // ROTATION
-            // ------------------------------------------------
-
-            if self.keyboard.q {
-                player.rotate(0.02);
-            }
-
-            if self.keyboard.e {
-                player.rotate(-0.02);
-            }
-
-            // ------------------------------------------------
-            // SCALE
-            // ------------------------------------------------
-
-            if self.keyboard.z {
-                player.transform.scale[0] -= 0.01;
-                player.transform.scale[1] -= 0.01;
-            }
-
-            if self.keyboard.x {
-                player.transform.scale[0] += 0.01;
-                player.transform.scale[1] += 0.01;
-            }
-
-            // ------------------------------------------------
-            // SCALE LIMIT
-            // ------------------------------------------------
-
-            player.transform.scale[0] = player.transform.scale[0].clamp(0.1, 3.0);
-
-            player.transform.scale[1] = player.transform.scale[1].clamp(0.1, 3.0);
+        // ====================================================
+        // BALL VELOCITY
+        // ====================================================
+        let ball_velocity = self.ball_velocity;
+        if let Some(ball) = self.get_entity_mut(self.ball_id) {
+            ball.translate(ball_velocity[0], ball_velocity[1]);
         }
 
         // ====================================================
@@ -259,37 +271,5 @@ impl GameState {
         }
 
         self.speed = self.speed.max(0.0001);
-
-        // ====================================================
-        // CAMERA MOVEMENT
-        // ====================================================
-
-        if self.keyboard.up {
-            self.camera.translate(0.0, self.speed);
-        }
-
-        if self.keyboard.down {
-            self.camera.translate(0.0, -self.speed);
-        }
-
-        if self.keyboard.left {
-            self.camera.translate(-self.speed, 0.0);
-        }
-
-        if self.keyboard.right {
-            self.camera.translate(self.speed, 0.0);
-        }
-
-        // ====================================================
-        // CAMERA ZOOM
-        // ====================================================
-
-        if self.keyboard.zoom_in {
-            self.camera.set_zoom(self.camera.zoom + 0.01);
-        }
-
-        if self.keyboard.zoom_out {
-            self.camera.set_zoom(self.camera.zoom - 0.01);
-        }
     }
 }

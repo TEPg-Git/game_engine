@@ -1,11 +1,23 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use wgpu::util::DeviceExt;
 use winit::window::Window;
 
+use crate::entity::Entity;
 use crate::graphics::{Uniforms, Vertex};
 use crate::sprite::Sprite;
 use crate::text::{Text, create_text_bitmap_with_options, load_font};
+
+// ============================================================
+// RENDER OBJECT
+// ============================================================
+
+pub struct RenderObject {
+    pub sprite_bind_group: wgpu::BindGroup,
+    pub vertex_buffer: wgpu::Buffer,
+    pub vertex_count: u32,
+}
 
 // ============================================================
 // RENDERER
@@ -47,6 +59,11 @@ pub struct Renderer {
     // PIPELINE
     // ========================================================
     pub render_pipeline: wgpu::RenderPipeline,
+
+    // ========================================================
+    // SPRITE / OBJECTS
+    // ========================================================
+    pub render_objects: HashMap<u32, RenderObject>,
 }
 
 // ============================================================
@@ -54,6 +71,10 @@ pub struct Renderer {
 // ============================================================
 
 impl Renderer {
+    // ========================================================
+    // NEW
+    // ========================================================
+
     pub fn new(window: Arc<Window>, text: &Text) -> Self {
         // ====================================================
         // WGPU INSTANCE
@@ -632,6 +653,28 @@ impl Renderer {
             text_revision: text.revision(),
 
             render_pipeline,
+
+            render_objects: HashMap::new(),
+        }
+    }
+
+    // ========================================================
+    // CREATE RENDER OBJECT
+    // ========================================================
+
+    pub fn create_render_object(&mut self, entity: &Entity) {
+        if let Some(sprite) = &entity.sprite {
+            let sprite_bind_group = self.create_sprite_bind_group(sprite);
+
+            let (vertex_buffer, vertex_count) = self.create_sprite_vertex_buffer(sprite);
+
+            let render_object = RenderObject {
+                sprite_bind_group,
+                vertex_buffer,
+                vertex_count,
+            };
+
+            self.render_objects.insert(entity.id, render_object);
         }
     }
 
