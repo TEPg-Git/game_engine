@@ -35,6 +35,7 @@ pub struct GameState {
     pub player1_id: u32,
     pub player2_id: u32,
     pub ball_id: u32,
+
     // ========================================================
     // BALL VELOCITY
     // ========================================================
@@ -48,6 +49,7 @@ pub struct GameState {
     // ========================================================
     // MOVEMENT SPEED
     // ========================================================
+    // Units per second.
     pub speed: f32,
 
     // ========================================================
@@ -88,89 +90,33 @@ impl GameState {
 
             camera: Camera::new(),
 
-            speed: 0.001,
+            // Delta time is measured in seconds, so movement
+            // speed is defined as world units per second.
+            speed: 1.0,
 
             next_entity_id: 0,
 
             text: {
-                // ------------------------------------------------
-                // TEXT CONTENT
-                // ------------------------------------------------
-
                 let mut text = Text::new("EAST ENGINE\nPONG GAME", 24.0);
 
-                // ------------------------------------------------
-                // POSITION
-                // ------------------------------------------------
-
                 text.set_position(-0.5, 0.7);
-
-                // ------------------------------------------------
-                // COLOR
-                // ------------------------------------------------
-
                 text.set_color(1.0, 0.0, 0.0, 1.0);
-
-                // ------------------------------------------------
-                // ALIGNMENT
-                // ------------------------------------------------
-
                 text.set_alignment(TextAlignment::Center);
-
-                // ------------------------------------------------
-                // LINE SPACING
-                // ------------------------------------------------
-
                 text.set_line_spacing(1.2);
-
-                // ------------------------------------------------
-                // LETTER SPACING
-                // ------------------------------------------------
-
                 text.set_letter_spacing(0.5);
-
-                // ------------------------------------------------
-                // SCALE
-                // ------------------------------------------------
-
                 text.set_scale(1.0, 1.0);
-
-                // ------------------------------------------------
-                // ROTATION
-                // ------------------------------------------------
-
                 text.set_rotation(0.0);
-
-                // ------------------------------------------------
-                // OPACITY
-                // ------------------------------------------------
-
                 text.set_opacity(1.0);
-
-                // ------------------------------------------------
-                // VISIBILITY
-                // ------------------------------------------------
-
                 text.set_visible(true);
-
-                // ------------------------------------------------
-                // MAX WIDTH
-                // ------------------------------------------------
-                //
-                // Wrapping is supported by the text system.
-                // Keep it disabled for this basic demo so the
-                // two explicit lines remain easy to see.
-                // ------------------------------------------------
-
                 text.set_max_width(None);
 
                 text
             },
         };
 
-        // ========================================================
+        // ====================================================
         // PLAYERS AND BALL
-        // ========================================================
+        // ====================================================
 
         game_state.player1_id = game_state.create_entity("Player_1");
         game_state.player2_id = game_state.create_entity("Player_2");
@@ -217,16 +163,14 @@ impl GameState {
 
     pub fn update(&mut self, delta_time: f32) {
         // ====================================================
-        // PLAYER_1
+        // PLAYER 1
         // ====================================================
+
         let key_w = self.keyboard.w;
         let key_s = self.keyboard.s;
         let speed = self.speed;
-        if let Some(player_1) = self.get_entity_mut(self.player1_id) {
-            // ------------------------------------------------
-            // MOVEMENT     ONLY UP AND DOWN
-            // ------------------------------------------------
 
+        if let Some(player_1) = self.get_entity_mut(self.player1_id) {
             if key_w {
                 player_1.translate(0.0, speed * delta_time);
             }
@@ -235,11 +179,14 @@ impl GameState {
                 player_1.translate(0.0, -speed * delta_time);
             }
         }
+
         // ====================================================
-        // PLAYER_2
+        // PLAYER 2
         // ====================================================
+
         let key_up = self.keyboard.up;
         let key_down = self.keyboard.down;
+
         if let Some(player_2) = self.get_entity_mut(self.player2_id) {
             if key_up {
                 player_2.translate(0.0, speed * delta_time);
@@ -251,25 +198,16 @@ impl GameState {
         }
 
         // ====================================================
-        // BALL VELOCITY
+        // BALL
         // ====================================================
+
         let ball_velocity = self.ball_velocity;
+
         if let Some(ball) = self.get_entity_mut(self.ball_id) {
-            ball.translate(ball_velocity[0] * delta_time, ball_velocity[1] * delta_time);
+            ball.translate(
+                ball_velocity[0] * delta_time,
+                ball_velocity[1] * delta_time,
+            );
         }
-
-        // ====================================================
-        // SPEED
-        // ====================================================
-
-        if self.keyboard.i {
-            self.speed += 0.0001;
-        }
-
-        if self.keyboard.o {
-            self.speed -= 0.0001;
-        }
-
-        self.speed = self.speed.max(0.0001);
     }
 }
