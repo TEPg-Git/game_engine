@@ -248,21 +248,30 @@ impl GameState {
             self.ball_velocity[1] = -self.ball_velocity[1];
         }
 
-        //Score_2
+        // Score_2
+        let ball_velocity_x = self.ball_velocity[0];
+
         if let Some(ball) = self.get_entity_mut(self.ball_id) {
-            if ball.transform.position[0] > 1.0 {
+            let ball_half_width = ball.sprite.as_ref().unwrap().size[0] / 2.0;
+
+            if ball.transform.position[0] - ball_half_width > 1.0 {
                 ball.transform.position[0] = 0.0;
                 ball.transform.position[1] = 0.0;
-                self.ball_velocity[0] = -self.ball_velocity[0];
+                self.ball_velocity[0] = -ball_velocity_x;
                 self.score_2 += 1;
             }
         }
-        //Score_1
+
+        // Score_1
+        let ball_velocity_x = self.ball_velocity[0];
+
         if let Some(ball) = self.get_entity_mut(self.ball_id) {
-            if ball.transform.position[0] < -1.0 {
+            let ball_half_width = ball.sprite.as_ref().unwrap().size[0] / 2.0;
+
+            if ball.transform.position[0] + ball_half_width < -1.0 {
                 ball.transform.position[0] = 0.0;
                 ball.transform.position[1] = 0.0;
-                self.ball_velocity[0] = -self.ball_velocity[0];
+                self.ball_velocity[0] = -ball_velocity_x;
                 self.score_1 += 1;
             }
         }
