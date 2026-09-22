@@ -68,8 +68,10 @@ impl Text {
     }
 
     pub fn set_content(&mut self, content: &str) {
-        self.content = content.to_string();
-        self.revision += 1;
+        if self.content != content {
+            self.content = content.to_string();
+            self.revision += 1;
+        }
     }
 
     pub fn set_font_size(&mut self, font_size: f32) {
