@@ -272,17 +272,13 @@ impl App {
             // ENTITY SPRITES
             // =================================================
 
-            render_pass.set_bind_group(0, uniform_bind_group, &[]);
-
             for entity in &self.game_state.entities {
                 let Some(render_object) = renderer.render_objects.get(&entity.id) else {
                     continue;
                 };
 
-                // ---------------------------------------------
-                // CREATE ENTITY UNIFORMS
-                // ---------------------------------------------
-
+                // Each entity owns its own uniform buffer, so its
+                // transform remains independent during the render pass.
                 let uniforms = Uniforms {
                     position_rotation: [
                         entity.transform.position[0],
@@ -308,27 +304,28 @@ impl App {
                     camera_zoom: [self.game_state.camera.zoom, 0.0],
                 };
 
-                // ---------------------------------------------
-                // UPDATE SHARED UNIFORM BUFFER
-                // ---------------------------------------------
+                queue.write_buffer(
+                    &render_object.uniform_buffer,
+                    0,
+                    bytemuck::bytes_of(&uniforms),
+                );
 
-                queue.write_buffer(uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
+                render_pass.set_bind_group(
+                    0,
+                    &render_object.uniform_bind_group,
+                    &[],
+                );
 
-                // ---------------------------------------------
-                // SPRITE TEXTURE
-                // ---------------------------------------------
+                render_pass.set_bind_group(
+                    1,
+                    &render_object.sprite_bind_group,
+                    &[],
+                );
 
-                render_pass.set_bind_group(1, &render_object.sprite_bind_group, &[]);
-
-                // ---------------------------------------------
-                // SPRITE VERTICES
-                // ---------------------------------------------
-
-                render_pass.set_vertex_buffer(0, render_object.vertex_buffer.slice(..));
-
-                // ---------------------------------------------
-                // DRAW ENTITY
-                // ---------------------------------------------
+                render_pass.set_vertex_buffer(
+                    0,
+                    render_object.vertex_buffer.slice(..),
+                );
 
                 render_pass.draw(0..render_object.vertex_count, 0..1);
             }
