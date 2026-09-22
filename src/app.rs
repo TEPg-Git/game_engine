@@ -243,9 +243,9 @@ impl App {
 
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.05,
-                            g: 0.10,
-                            b: 0.20,
+                            r: 0.00,
+                            g: 0.00,
+                            b: 0.00,
                             a: 1.0,
                         }),
 
@@ -310,22 +310,11 @@ impl App {
                     bytemuck::bytes_of(&uniforms),
                 );
 
-                render_pass.set_bind_group(
-                    0,
-                    &render_object.uniform_bind_group,
-                    &[],
-                );
+                render_pass.set_bind_group(0, &render_object.uniform_bind_group, &[]);
 
-                render_pass.set_bind_group(
-                    1,
-                    &render_object.sprite_bind_group,
-                    &[],
-                );
+                render_pass.set_bind_group(1, &render_object.sprite_bind_group, &[]);
 
-                render_pass.set_vertex_buffer(
-                    0,
-                    render_object.vertex_buffer.slice(..),
-                );
+                render_pass.set_vertex_buffer(0, render_object.vertex_buffer.slice(..));
 
                 render_pass.draw(0..render_object.vertex_count, 0..1);
             }

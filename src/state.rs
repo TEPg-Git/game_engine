@@ -97,10 +97,10 @@ impl GameState {
             next_entity_id: 0,
 
             text: {
-                let mut text = Text::new("EAST ENGINE\nPONG GAME", 24.0);
+                let mut text = Text::new("EAST ENGINE PONG GAME", 24.0);
 
-                text.set_position(-0.5, 0.7);
-                text.set_color(1.0, 0.0, 0.0, 1.0);
+                text.set_position(0.0, 0.9);
+                text.set_color(1.0, 1.0, 1.0, 1.0);
                 text.set_alignment(TextAlignment::Center);
                 text.set_line_spacing(1.2);
                 text.set_letter_spacing(0.5);
@@ -196,8 +196,7 @@ impl GameState {
             // The player sprite is 0.5 units tall, so its half-height
             // is 0.25 units. Keep its center inside those limits so
             // the whole sprite stays visible on screen.
-            player_1.transform.position[1] =
-                player_1.transform.position[1].clamp(-0.75, 0.75);
+            player_1.transform.position[1] = player_1.transform.position[1].clamp(-0.75, 0.75);
         }
 
         // ====================================================
@@ -217,8 +216,7 @@ impl GameState {
             }
 
             // Keep the entire player sprite inside the screen.
-            player_2.transform.position[1] =
-                player_2.transform.position[1].clamp(-0.75, 0.75);
+            player_2.transform.position[1] = player_2.transform.position[1].clamp(-0.75, 0.75);
         }
 
         // ====================================================
@@ -228,10 +226,7 @@ impl GameState {
         let ball_velocity = self.ball_velocity;
 
         if let Some(ball) = self.get_entity_mut(self.ball_id) {
-            ball.translate(
-                ball_velocity[0] * delta_time,
-                ball_velocity[1] * delta_time,
-            );
+            ball.translate(ball_velocity[0] * delta_time, ball_velocity[1] * delta_time);
         }
     }
 }
