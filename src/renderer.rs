@@ -14,6 +14,8 @@ use crate::text::{Text, create_text_bitmap_with_options, load_font};
 // ============================================================
 
 pub struct RenderObject {
+    pub uniform_buffer: wgpu::Buffer,
+    pub uniform_bind_group: wgpu::BindGroup,
     pub sprite_bind_group: wgpu::BindGroup,
     pub vertex_buffer: wgpu::Buffer,
     pub vertex_count: u32,
@@ -39,6 +41,7 @@ pub struct Renderer {
     // ========================================================
     pub uniform_buffer: wgpu::Buffer,
     pub uniform_bind_group: wgpu::BindGroup,
+    pub uniform_bind_group_layout: wgpu::BindGroupLayout,
 
     // ========================================================
     // TEXT UNIFORM
@@ -638,6 +641,8 @@ impl Renderer {
 
             uniform_bind_group,
 
+            uniform_bind_group_layout,
+
             text_uniform_buffer,
 
             text_uniform_bind_group,
@@ -664,11 +669,66 @@ impl Renderer {
 
     pub fn create_render_object(&mut self, entity: &Entity) {
         if let Some(sprite) = &entity.sprite {
+            // Each entity gets its own uniform buffer.
+            //
+            // A shared uniform buffer cannot be updated with
+            // queue.write_buffer() once per draw and then expected
+            // to retain a different value for each draw. The writes
+            // are submitted to the GPU before the render pass executes,
+            // so every draw would see the final written transform.
+            let uniforms = Uniforms {
+                position_rotation: [
+                    entity.transform.position[0],
+                    entity.transform.position[1],
+                    entity.transform.rotation,
+                    0.0,
+                ],
+
+                scale: [
+                    entity.transform.scale[0],
+                    entity.transform.scale[1],
+                    0.0,
+                    0.0,
+                ],
+
+                color: [1.0, 1.0, 1.0, 1.0],
+
+                camera_position: [0.0, 0.0],
+                camera_zoom: [1.0, 0.0],
+            };
+
+            let uniform_buffer = self.device.create_buffer_init(
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some("Entity Uniform Buffer"),
+
+                    contents: bytemuck::bytes_of(&uniforms),
+
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                },
+            );
+
+            let uniform_bind_group = self.device.create_bind_group(
+                &wgpu::BindGroupDescriptor {
+                    label: Some("Entity Uniform Bind Group"),
+
+                    layout: &self.uniform_bind_group_layout,
+
+                    entries: &[wgpu::BindGroupEntry {
+                        binding: 0,
+
+                        resource: uniform_buffer.as_entire_binding(),
+                    }],
+                },
+            );
+
             let sprite_bind_group = self.create_sprite_bind_group(sprite);
 
-            let (vertex_buffer, vertex_count) = self.create_sprite_vertex_buffer(sprite);
+            let (vertex_buffer, vertex_count) =
+                self.create_sprite_vertex_buffer(sprite);
 
             let render_object = RenderObject {
+                uniform_buffer,
+                uniform_bind_group,
                 sprite_bind_group,
                 vertex_buffer,
                 vertex_count,
