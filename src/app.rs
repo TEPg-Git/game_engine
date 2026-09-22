@@ -380,20 +380,20 @@ impl ApplicationHandler for App {
             &renderer.device,
             &renderer.queue,
             "assets/textures/Player.png",
-            [0.5, 0.5],
+            [0.05, 0.4],
         );
         let sprite_player_2 = Sprite::from_file(
             &renderer.device,
             &renderer.queue,
             "assets/textures/Player.png",
-            [0.5, 0.5],
+            [0.05, 0.4],
         );
 
         let sprite_ball = Sprite::from_file(
             &renderer.device,
             &renderer.queue,
             "assets/textures/Ball.png",
-            [0.2, 0.2],
+            [0.15, 0.15],
         );
 
         // ====================================================
