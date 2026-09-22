@@ -97,150 +97,54 @@ impl App {
     // ========================================================
 
     fn render(&mut self) {
-        // ----------------------------------------------------
-        // UPDATE GAME STATE
-        // ----------------------------------------------------
-        self.time.update(); // Update the time
-        let delta_time = self.time.delta_time(); // Get the delta time
-        self.game_state.update(delta_time); // Update the game state
-
-        // ----------------------------------------------------
-        // GET RENDERER
-        // ----------------------------------------------------
+        self.time.update();
+        let delta_time = self.time.delta_time();
+        self.game_state.update(delta_time);
 
         let renderer = match self.renderer.as_mut() {
             Some(renderer) => renderer,
             None => return,
         };
 
-        // ----------------------------------------------------
-        // UPDATE TEXT BITMAP
-        // ----------------------------------------------------
-
-        if renderer.text_revision != self.game_state.text.revision() {
-            renderer.update_text(&self.game_state.text);
-        }
-
-        // ----------------------------------------------------
-        // UPDATE TEXT UNIFORMS
-        // ----------------------------------------------------
-
-        let text_uniforms = Uniforms {
-            position_rotation: [
-                self.game_state.text.position[0],
-                self.game_state.text.position[1],
-                self.game_state.text.rotation,
-                0.0,
-            ],
-
-            scale: [
-                self.game_state.text.scale[0],
-                self.game_state.text.scale[1],
-                0.0,
-                0.0,
-            ],
-
-            color: [
-                self.game_state.text.color[0],
-                self.game_state.text.color[1],
-                self.game_state.text.color[2],
-                self.game_state.text.opacity,
-            ],
-
-            camera_position: [
-                self.game_state.camera.position[0],
-                self.game_state.camera.position[1],
-            ],
-
-            camera_zoom: [self.game_state.camera.zoom, 0.0],
-        };
-
-        renderer.queue.write_buffer(
-            &renderer.text_uniform_buffer,
-            0,
-            bytemuck::bytes_of(&text_uniforms),
-        );
-
-        // ----------------------------------------------------
-        // GPU OBJECTS
-        // ----------------------------------------------------
+        renderer.update_text_object(0, &self.game_state.text);
+        renderer.update_text_object(1, &self.game_state.score_text);
 
         let surface = &renderer.surface;
         let device = &renderer.device;
         let queue = &renderer.queue;
-
-        let uniform_buffer = &renderer.uniform_buffer;
-        let uniform_bind_group = &renderer.uniform_bind_group;
-
-        let text_uniform_bind_group = &renderer.text_uniform_bind_group;
-        let text_bind_group = &renderer.text_bind_group;
-        let text_vertex_buffer = &renderer.text_vertex_buffer;
-
         let render_pipeline = &renderer.render_pipeline;
-
-        // ----------------------------------------------------
-        // GET FRAME
-        // ----------------------------------------------------
 
         let output = match surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(output) => output,
-
             wgpu::CurrentSurfaceTexture::Suboptimal(output) => output,
-
             wgpu::CurrentSurfaceTexture::Outdated => {
                 surface.configure(&renderer.device, &renderer.config);
                 return;
             }
-
             wgpu::CurrentSurfaceTexture::Lost => {
                 surface.configure(&renderer.device, &renderer.config);
                 return;
             }
-
-            wgpu::CurrentSurfaceTexture::Timeout => {
-                return;
-            }
-
-            wgpu::CurrentSurfaceTexture::Occluded => {
-                return;
-            }
-
-            wgpu::CurrentSurfaceTexture::Validation => {
-                return;
-            }
+            wgpu::CurrentSurfaceTexture::Timeout
+            | wgpu::CurrentSurfaceTexture::Occluded
+            | wgpu::CurrentSurfaceTexture::Validation => return,
         };
-
-        // ----------------------------------------------------
-        // VIEW
-        // ----------------------------------------------------
 
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        // ----------------------------------------------------
-        // COMMAND ENCODER
-        // ----------------------------------------------------
-
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Render Encoder"),
         });
 
-        // ====================================================
-        // RENDER PASS
-        // ====================================================
-
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
-
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
-
                     depth_slice: None,
-
                     resolve_target: None,
-
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
                             r: 0.00,
@@ -248,23 +152,14 @@ impl App {
                             b: 0.00,
                             a: 1.0,
                         }),
-
                         store: wgpu::StoreOp::Store,
                     },
                 })],
-
                 depth_stencil_attachment: None,
-
                 timestamp_writes: None,
-
                 occlusion_query_set: None,
-
                 multiview_mask: None,
             });
-
-            // =================================================
-            // PIPELINE
-            // =================================================
 
             render_pass.set_pipeline(render_pipeline);
 
@@ -277,8 +172,6 @@ impl App {
                     continue;
                 };
 
-                // Each entity owns its own uniform buffer, so its
-                // transform remains independent during the render pass.
                 let uniforms = Uniforms {
                     position_rotation: [
                         entity.transform.position[0],
@@ -286,21 +179,17 @@ impl App {
                         entity.transform.rotation,
                         0.0,
                     ],
-
                     scale: [
                         entity.transform.scale[0],
                         entity.transform.scale[1],
                         0.0,
                         0.0,
                     ],
-
                     color: [1.0, 1.0, 1.0, 1.0],
-
                     camera_position: [
                         self.game_state.camera.position[0],
                         self.game_state.camera.position[1],
                     ],
-
                     camera_zoom: [self.game_state.camera.zoom, 0.0],
                 };
 
@@ -311,222 +200,28 @@ impl App {
                 );
 
                 render_pass.set_bind_group(0, &render_object.uniform_bind_group, &[]);
-
                 render_pass.set_bind_group(1, &render_object.sprite_bind_group, &[]);
-
                 render_pass.set_vertex_buffer(0, render_object.vertex_buffer.slice(..));
-
                 render_pass.draw(0..render_object.vertex_count, 0..1);
             }
 
             // =================================================
-            // TEXT
+            // TEXT OBJECTS
             // =================================================
 
-            if self.game_state.text.visible && self.game_state.text.opacity > 0.0 {
-                render_pass.set_bind_group(0, text_uniform_bind_group, &[]);
+            for text_object in renderer.text_objects.values() {
+                if !text_object.text.visible || text_object.text.opacity <= 0.0 {
+                    continue;
+                }
 
-                render_pass.set_bind_group(1, text_bind_group, &[]);
-
-                render_pass.set_vertex_buffer(0, text_vertex_buffer.slice(..));
-
-                render_pass.draw(0..renderer.text_vertex_count, 0..1);
+                render_pass.set_bind_group(0, &text_object.uniform_bind_group, &[]);
+                render_pass.set_bind_group(1, &text_object.text_bind_group, &[]);
+                render_pass.set_vertex_buffer(0, text_object.vertex_buffer.slice(..));
+                render_pass.draw(0..text_object.vertex_count, 0..1);
             }
         }
-
-        // ----------------------------------------------------
-        // SUBMIT
-        // ----------------------------------------------------
 
         queue.submit(Some(encoder.finish()));
-
-        // ----------------------------------------------------
-        // PRESENT
-        // ----------------------------------------------------
-
         queue.present(output);
     }
-}
 
-// ============================================================
-// APPLICATION HANDLER
-// ============================================================
-
-impl ApplicationHandler for App {
-    // ========================================================
-    // RESUMED
-    // ========================================================
-
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        // ====================================================
-        // WINDOW
-        // ====================================================
-
-        let window_attributes = Window::default_attributes().with_title("East Engine");
-
-        let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
-
-        // ====================================================
-        // RENDERER
-        // ====================================================
-
-        let mut renderer = Renderer::new(window.clone(), &self.game_state.text);
-
-        // ====================================================
-        // SPRITES
-        // ====================================================
-
-        let sprite_player_1 = Sprite::from_file(
-            &renderer.device,
-            &renderer.queue,
-            "assets/textures/Player.png",
-            [0.05, 0.4],
-        );
-        let sprite_player_2 = Sprite::from_file(
-            &renderer.device,
-            &renderer.queue,
-            "assets/textures/Player.png",
-            [0.05, 0.4],
-        );
-
-        let sprite_ball = Sprite::from_file(
-            &renderer.device,
-            &renderer.queue,
-            "assets/textures/Ball.png",
-            [0.2, 0.2],
-        );
-
-        // ====================================================
-        // ASSIGN SPRITES TO ENTITIES
-        // ====================================================
-
-        if let Some(entity) = self.game_state.get_entity_mut(self.game_state.player1_id) {
-            entity.set_sprite(sprite_player_1);
-        }
-
-        if let Some(entity) = self.game_state.get_entity_mut(self.game_state.player2_id) {
-            entity.set_sprite(sprite_player_2);
-        }
-
-        if let Some(entity) = self.game_state.get_entity_mut(self.game_state.ball_id) {
-            entity.set_sprite(sprite_ball);
-        }
-
-        // ====================================================
-        // CREATE RENDER OBJECTS
-        // ====================================================
-
-        for entity in &self.game_state.entities {
-            renderer.create_render_object(entity);
-        }
-
-        // ====================================================
-        // STORE
-        // ====================================================
-
-        self.window = Some(window);
-
-        self.renderer = Some(renderer);
-
-        // ====================================================
-        // STARTUP
-        // ====================================================
-
-        println!("================================");
-        println!("East Engine v0.4 initialized!");
-        println!("Texture rendering enabled");
-        println!("Sprite rendering enabled");
-        println!("Text rendering enabled");
-        println!("Text: Hello East Engine");
-        println!("WASD = Move");
-        println!("I/O = Change speed");
-        println!("F = Fullscreen");
-        println!("Escape = Exit");
-        println!("================================");
-
-        // ====================================================
-        // REQUEST FIRST FRAME
-        // ====================================================
-
-        if let Some(window) = &self.window {
-            window.request_redraw();
-        }
-    }
-
-    // ========================================================
-    // WINDOW EVENTS
-    // ========================================================
-
-    fn window_event(
-        &mut self,
-        event_loop: &ActiveEventLoop,
-        _window_id: WindowId,
-        event: WindowEvent,
-    ) {
-        match event {
-            // ------------------------------------------------
-            // CLOSE
-            // ------------------------------------------------
-            WindowEvent::CloseRequested => {
-                event_loop.exit();
-            }
-
-            // ------------------------------------------------
-            // RESIZE
-            // ------------------------------------------------
-            WindowEvent::Resized(size) => {
-                self.resize(size.width, size.height);
-            }
-
-            // ------------------------------------------------
-            // KEYBOARD
-            // ------------------------------------------------
-            WindowEvent::KeyboardInput { event, .. } => {
-                let pressed = event.state == ElementState::Pressed;
-
-                if let PhysicalKey::Code(key_code) = event.physical_key {
-                    // ----------------------------------------
-                    // ESCAPE
-                    // ----------------------------------------
-
-                    if key_code == KeyCode::Escape {
-                        if pressed {
-                            println!("Escape pressed");
-
-                            event_loop.exit();
-                        }
-
-                        return;
-                    }
-
-                    // ----------------------------------------
-                    // F = FULLSCREEN
-                    // ----------------------------------------
-
-                    if key_code == KeyCode::KeyF && pressed {
-                        self.toggle_fullscreen();
-                    } else {
-                        // ------------------------------------
-                        // GAME INPUT
-                        // ------------------------------------
-
-                        self.game_state.keyboard.handle_keyboard(key_code, pressed);
-                    }
-                }
-            }
-
-            // ------------------------------------------------
-            // REDRAW
-            // ------------------------------------------------
-            WindowEvent::RedrawRequested => {
-                self.render();
-
-                if let Some(window) = &self.window {
-                    window.request_redraw();
-                }
-            }
-
-            _ => {}
-        }
-    }
-}
