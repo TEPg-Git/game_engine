@@ -122,6 +122,20 @@ impl GameState {
         game_state.player2_id = game_state.create_entity("Player_2");
         game_state.ball_id = game_state.create_entity("Ball");
 
+        // ====================================================
+        // INITIAL PLAYER POSITIONS
+        // ====================================================
+
+        // Player positions are expressed in normalized device
+        // coordinates (NDC), where the screen goes from -1 to +1.
+        if let Some(player_1) = game_state.get_entity_mut(game_state.player1_id) {
+            player_1.transform.position = [-0.8, 0.0];
+        }
+
+        if let Some(player_2) = game_state.get_entity_mut(game_state.player2_id) {
+            player_2.transform.position = [0.8, 0.0];
+        }
+
         game_state
     }
 
@@ -178,6 +192,12 @@ impl GameState {
             if key_s {
                 player_1.translate(0.0, -speed * delta_time);
             }
+
+            // The player sprite is 0.5 units tall, so its half-height
+            // is 0.25 units. Keep its center inside those limits so
+            // the whole sprite stays visible on screen.
+            player_1.transform.position[1] =
+                player_1.transform.position[1].clamp(-0.75, 0.75);
         }
 
         // ====================================================
@@ -195,6 +215,10 @@ impl GameState {
             if key_down {
                 player_2.translate(0.0, -speed * delta_time);
             }
+
+            // Keep the entire player sprite inside the screen.
+            player_2.transform.position[1] =
+                player_2.transform.position[1].clamp(-0.75, 0.75);
         }
 
         // ====================================================
