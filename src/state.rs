@@ -232,13 +232,14 @@ impl GameState {
         let mut bounced = false;
 
         if let Some(ball) = self.get_entity_mut(self.ball_id) {
-            if ball.transform.position[1] > 1.0 {
-                ball.transform.position[1] = 1.0;
+            let half_height = ball.sprite.as_ref().unwrap().size[1] / 2.0;
+            if ball.transform.position[1] + half_height > 1.0 {
+                ball.transform.position[1] = 1.0 - half_height;
                 bounced = true;
             }
 
-            if ball.transform.position[1] < -1.0 {
-                ball.transform.position[1] = -1.0;
+            if ball.transform.position[1] - half_height < -1.0 {
+                ball.transform.position[1] = -1.0 + half_height;
                 bounced = true;
             }
         }
