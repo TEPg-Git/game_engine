@@ -173,6 +173,8 @@ East Engine is being developed incrementally, with each major system implemented
 * [x] Separate sprite and text rendering resources
 * [x] GPU-based sprite transforms
 * [x] GPU-based text transforms
+* [x] Independent per-object uniform buffers
+* [x] Independent sprite and text GPU resources
 
 ---
 
@@ -227,6 +229,7 @@ East Engine is being developed incrementally, with each major system implemented
 * [x] Dynamic bitmap regeneration
 * [x] Text revision tracking
 * [x] Separate text GPU uniforms
+* [x] Dynamic score text updates
 
 ---
 
@@ -354,21 +357,34 @@ The demo will be used to validate the engine outside of isolated rendering tests
 
 The Pong game is currently being used to validate the engine's core systems outside of isolated rendering tests.
 
-Planned goals:
+### Current Pong Implementation
 
-* [ ] Player controller
-* [ ] Multiple entities
-* [ ] Sprite animation
-* [ ] Collision
-* [ ] Physics
-* [ ] Camera following
-* [ ] Tilemap
-* [ ] UI
-* [ ] Audio
-* [ ] Particles
-* [ ] Scene loading
-* [ ] Basic gameplay loop
-* [ ] Build a standalone release
+The current Pong prototype includes:
+
+* [x] Player 1 and Player 2 entities
+* [x] Independent paddle movement
+* [x] Player 1 on the left side of the screen
+* [x] Player 2 on the right side of the screen
+* [x] Vertical paddle movement limits
+* [x] Ball movement
+* [x] Top and bottom wall collision
+* [x] Paddle collision
+* [x] Score tracking
+* [x] Ball reset after scoring
+* [x] Dynamic score text rendering
+* [x] Sprite-based paddles and ball
+* [x] Pong gameplay loop
+
+### Future Pong Goals
+
+* [ ] Win condition / maximum score
+* [ ] Improved collision system
+* [ ] Physics-based ball movement
+* [ ] Sound effects
+* [ ] Start / pause / restart states
+* [ ] Main menu
+* [ ] Improved UI
+* [ ] Standalone release
 * [ ] Test on another computer
 
 The demo is an important milestone because it will demonstrate that East Engine can be used to build an actual playable application rather than only rendering technical test scenes.
