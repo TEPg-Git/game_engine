@@ -86,7 +86,7 @@ impl GameState {
             player2_id: 0,
             ball_id: 0,
 
-            ball_velocity: [-0.01, -1.5], //BALL VELOCITY
+            ball_velocity: [-0.4, -0.5], //BALL VELOCITY
 
             camera: Camera::new(),
 
@@ -246,6 +246,104 @@ impl GameState {
 
         if bounced {
             self.ball_velocity[1] = -self.ball_velocity[1];
+        }
+
+        //Score_2
+        if let Some(ball) = self.get_entity_mut(self.ball_id) {
+            if ball.transform.position[0] > 1.0 {
+                ball.transform.position[0] = 0.0;
+                ball.transform.position[1] = 0.0;
+                self.ball_velocity[0] = -self.ball_velocity[0];
+                self.score_2 += 1;
+            }
+        }
+        //Score_1
+        if let Some(ball) = self.get_entity_mut(self.ball_id) {
+            if ball.transform.position[0] < -1.0 {
+                ball.transform.position[0] = 0.0;
+                ball.transform.position[1] = 0.0;
+                self.ball_velocity[0] = -self.ball_velocity[0];
+                self.score_1 += 1;
+            }
+        }
+        // Collision for Player 2
+        let player_2 = self.get_entity(self.player2_id).unwrap();
+
+        let player_y = player_2.transform.position[1];
+        let player_height = player_2.sprite.as_ref().unwrap().size[1];
+        let player_width = player_2.sprite.as_ref().unwrap().size[0];
+
+        let ball_velocity_x = self.ball_velocity[0];
+
+        if let Some(ball) = self.get_entity_mut(self.ball_id) {
+            let ball_half_width = ball.sprite.as_ref().unwrap().size[0] / 2.0;
+            let ball_half_height = ball.sprite.as_ref().unwrap().size[1] / 2.0;
+
+            let player_half_width = player_width / 2.0;
+            let player_half_height = player_height / 2.0;
+
+            let ball_x = ball.transform.position[0];
+            let ball_y = ball.transform.position[1];
+
+            let player_x = 0.8;
+
+            // X-axis collision
+            let x_collision = ball_x + ball_half_width >= player_x - player_half_width;
+
+            // Y-axis collision
+            let y_collision = ball_y + ball_half_height >= player_y - player_half_height
+                && ball_y - ball_half_height <= player_y + player_half_height;
+
+            // Ball must be moving toward Player 2
+            let moving_towards_player = ball_velocity_x > 0.0;
+
+            if x_collision && y_collision && moving_towards_player {
+                // Move ball outside the paddle
+                ball.transform.position[0] = player_x - player_half_width - ball_half_width;
+
+                // Reverse horizontal velocity
+                self.ball_velocity[0] = -self.ball_velocity[0];
+            }
+        }
+
+        // Collision for Player 1
+        let player_1 = self.get_entity(self.player1_id).unwrap();
+
+        let player_y = player_1.transform.position[1];
+        let player_height = player_1.sprite.as_ref().unwrap().size[1];
+        let player_width = player_1.sprite.as_ref().unwrap().size[0];
+
+        let ball_velocity_x = self.ball_velocity[0];
+
+        if let Some(ball) = self.get_entity_mut(self.ball_id) {
+            let ball_half_width = ball.sprite.as_ref().unwrap().size[0] / 2.0;
+            let ball_half_height = ball.sprite.as_ref().unwrap().size[1] / 2.0;
+
+            let player_half_width = player_width / 2.0;
+            let player_half_height = player_height / 2.0;
+
+            let ball_x = ball.transform.position[0];
+            let ball_y = ball.transform.position[1];
+
+            let player_x = -0.8;
+
+            // X-axis collision
+            let x_collision = ball_x - ball_half_width <= player_x + player_half_width;
+
+            // Y-axis collision
+            let y_collision = ball_y + ball_half_height >= player_y - player_half_height
+                && ball_y - ball_half_height <= player_y + player_half_height;
+
+            // Ball must be moving toward Player 1
+            let moving_towards_player = ball_velocity_x < 0.0;
+
+            if x_collision && y_collision && moving_towards_player {
+                // Move ball outside the paddle
+                ball.transform.position[0] = player_x + player_half_width + ball_half_width;
+
+                // Reverse horizontal velocity
+                self.ball_velocity[0] = -self.ball_velocity[0];
+            }
         }
     }
 }
