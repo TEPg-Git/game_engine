@@ -260,9 +260,9 @@ The goal is to complete the following 2D systems before beginning 3D rendering.
 * [x] Sprite rendering
 * [x] Text rendering
 * [x] Improved text rendering API
+* [x] Time / Delta Time system
 * [ ] Asset/resource manager
 * [ ] Scene system
-* [ ] Time / Delta Time system
 * [ ] Sprite sheet support
 * [ ] Sprite animation
 * [ ] Tilemap system
@@ -352,6 +352,8 @@ A small playable 2D game will be created using East Engine once the core 2D syst
 
 The demo will be used to validate the engine outside of isolated rendering tests.
 
+The Pong game is currently being used to validate the engine's core systems outside of isolated rendering tests.
+
 Planned goals:
 
 * [ ] Player controller
@@ -414,6 +416,7 @@ src/
 │   └── mod.rs
 ├── text.rs
 ├── texture.rs
+├── time.rs
 ├── sprite.rs
 ├── transform.rs
 └── shader.wgsl
