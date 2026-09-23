@@ -90,8 +90,11 @@ impl Renderer {
             .get_default_config(&adapter, size.width.max(1), size.height.max(1))
             .expect("Surface is not supported");
 
-        // Keep only one frame queued to the presentation engine.
-        // This reduces resize/fullscreen stalls on Windows.
+        // Do not let the render loop block on the monitor's vblank queue.
+        // Windows enters a nested modal loop during live resize/fullscreen
+        // transitions; FIFO presentation can stall get_current_texture()
+        // while that loop is active.
+        config.present_mode = wgpu::PresentMode::AutoNoVsync;
         config.desired_maximum_frame_latency = 1;
 
         surface.configure(&device, &config);
