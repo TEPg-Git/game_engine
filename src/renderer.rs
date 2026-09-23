@@ -55,6 +55,12 @@ pub struct Renderer {
     // PIPELINE
     pub render_pipeline: wgpu::RenderPipeline,
 
+    // RESIZE STATE
+    // Window systems can emit many resize events while the user is dragging
+    // the window. Keep the new size immediately, but defer the expensive
+    // surface reconfiguration until the next render.
+    resize_pending: bool,
+
     // RENDER OBJECTS
     pub render_objects: HashMap<u32, RenderObject>,
     pub text_objects: HashMap<u32, TextObject>,
@@ -192,6 +198,7 @@ impl Renderer {
             texture_bind_group_layout,
             uniform_bind_group_layout,
             render_pipeline,
+            resize_pending: false,
             render_objects: HashMap::new(),
             text_objects: HashMap::new(),
         }
@@ -204,7 +211,7 @@ impl Renderer {
 
         self.config.width = width;
         self.config.height = height;
-        self.surface.configure(&self.device, &self.config);
+        self.resize_pending = true;
     }
 
     pub fn create_render_object(&mut self, entity: &Entity) {
@@ -314,6 +321,15 @@ impl Renderer {
     }
 
     pub fn render(&mut self, state: &GameState) {
+        if self.config.width == 0 || self.config.height == 0 {
+            return;
+        }
+
+        if self.resize_pending {
+            self.surface.configure(&self.device, &self.config);
+            self.resize_pending = false;
+        }
+
         self.update_text_object(0, &state.text);
         self.update_text_object(1, &state.score_text);
 
