@@ -1,4 +1,5 @@
 use fontdue::Font;
+use std::sync::OnceLock;
 
 // ============================================================
 // FONT
@@ -7,9 +8,13 @@ use fontdue::Font;
 const FONT_DATA: &[u8] =
     include_bytes!("../assets/fonts/Roboto-VariableFont_wdth,wght.ttf");
 
-pub fn load_font() -> Font {
-    Font::from_bytes(FONT_DATA, fontdue::FontSettings::default())
-        .expect("Failed to load font")
+pub fn load_font() -> &'static Font {
+    static FONT: OnceLock<Font> = OnceLock::new();
+
+    FONT.get_or_init(|| {
+        Font::from_bytes(FONT_DATA, fontdue::FontSettings::default())
+            .expect("Failed to load font")
+    })
 }
 
 // ============================================================
