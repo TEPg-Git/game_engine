@@ -8,7 +8,7 @@ use crate::entity::Entity;
 use crate::graphics::{Uniforms, Vertex};
 use crate::sprite::Sprite;
 use crate::state::GameState;
-use crate::text::{create_text_bitmap_with_options, load_font, Text};
+use crate::text::{Text, create_text_bitmap_with_options, load_font};
 
 // ============================================================
 // RENDER OBJECT
@@ -66,26 +66,23 @@ impl Renderer {
 
         let surface = instance.create_surface(window.clone()).unwrap();
 
-        let adapter = pollster::block_on(instance.request_adapter(
-            &wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::default(),
-                force_fallback_adapter: false,
-                compatible_surface: Some(&surface),
-                apply_limit_buckets: false,
-            },
-        ))
+        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::default(),
+            force_fallback_adapter: false,
+            compatible_surface: Some(&surface),
+            apply_limit_buckets: false,
+        }))
         .expect("Failed to find suitable GPU adapter");
 
-        let (device, queue) =
-            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-                label: Some("East Engine Device"),
-                required_features: wgpu::Features::empty(),
-                required_limits: wgpu::Limits::default(),
-                experimental_features: wgpu::ExperimentalFeatures::disabled(),
-                memory_hints: wgpu::MemoryHints::default(),
-                trace: wgpu::Trace::Off,
-            }))
-            .expect("Failed to create GPU device");
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some("East Engine Device"),
+            required_features: wgpu::Features::empty(),
+            required_limits: wgpu::Limits::default(),
+            experimental_features: wgpu::ExperimentalFeatures::disabled(),
+            memory_hints: wgpu::MemoryHints::default(),
+            trace: wgpu::Trace::Off,
+        }))
+        .expect("Failed to create GPU device");
 
         let size = window.inner_size();
 
@@ -228,15 +225,14 @@ impl Renderer {
                         usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                     });
 
-            let uniform_bind_group =
-                self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("Entity Uniform Bind Group"),
-                    layout: &self.uniform_bind_group_layout,
-                    entries: &[wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: uniform_buffer.as_entire_binding(),
-                    }],
-                });
+            let uniform_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Entity Uniform Bind Group"),
+                layout: &self.uniform_bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buffer.as_entire_binding(),
+                }],
+            });
 
             let sprite_bind_group = self.create_sprite_bind_group(sprite);
             let (vertex_buffer, vertex_count) = self.create_sprite_vertex_buffer(sprite);
@@ -277,23 +273,43 @@ impl Renderer {
 
         let vertices = Self::quad_vertices(half_width, half_height);
 
-        let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Sprite Vertex Buffer"),
-            contents: bytemuck::cast_slice(&vertices),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
+        let vertex_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Sprite Vertex Buffer"),
+                contents: bytemuck::cast_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
 
         (vertex_buffer, vertices.len() as u32)
     }
 
     fn quad_vertices(half_width: f32, half_height: f32) -> [Vertex; 6] {
         [
-            Vertex { position: [-half_width, half_height], tex_coords: [0.0, 0.0] },
-            Vertex { position: [half_width, half_height], tex_coords: [1.0, 0.0] },
-            Vertex { position: [-half_width, -half_height], tex_coords: [0.0, 1.0] },
-            Vertex { position: [half_width, half_height], tex_coords: [1.0, 0.0] },
-            Vertex { position: [half_width, -half_height], tex_coords: [1.0, 1.0] },
-            Vertex { position: [-half_width, -half_height], tex_coords: [0.0, 1.0] },
+            Vertex {
+                position: [-half_width, half_height],
+                tex_coords: [0.0, 0.0],
+            },
+            Vertex {
+                position: [half_width, half_height],
+                tex_coords: [1.0, 0.0],
+            },
+            Vertex {
+                position: [-half_width, -half_height],
+                tex_coords: [0.0, 1.0],
+            },
+            Vertex {
+                position: [half_width, half_height],
+                tex_coords: [1.0, 0.0],
+            },
+            Vertex {
+                position: [half_width, -half_height],
+                tex_coords: [1.0, 1.0],
+            },
+            Vertex {
+                position: [-half_width, -half_height],
+                tex_coords: [0.0, 1.0],
+            },
         ]
     }
 
@@ -317,11 +333,11 @@ impl Renderer {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let mut encoder = self.device.create_command_encoder(
-            &wgpu::CommandEncoderDescriptor {
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
-            },
-        );
+            });
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -367,10 +383,7 @@ impl Renderer {
                         0.0,
                     ],
                     color: [1.0, 1.0, 1.0, 1.0],
-                    camera_position: [
-                        state.camera.position[0],
-                        state.camera.position[1],
-                    ],
+                    camera_position: [state.camera.position[0], state.camera.position[1]],
                     camera_zoom: [state.camera.zoom, 0.0],
                 };
 
@@ -399,7 +412,7 @@ impl Renderer {
         }
 
         self.queue.submit(Some(encoder.finish()));
-        output.present();
+        self.queue.present(output);
     }
 
     pub fn create_text_object(&mut self, id: u32, text: Text) {
@@ -441,28 +454,26 @@ impl Renderer {
             ],
         });
 
-        let (vertex_buffer, vertex_count) =
-            self.create_text_vertex_buffer(text_width, text_height);
+        let (vertex_buffer, vertex_count) = self.create_text_vertex_buffer(text_width, text_height);
 
         let uniforms = Self::text_uniforms(&text);
 
-        let uniform_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Text Uniform Buffer"),
-                    contents: bytemuck::bytes_of(&uniforms),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-                });
-
-        let uniform_bind_group =
-            self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Text Uniform Bind Group"),
-                layout: &self.uniform_bind_group_layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform_buffer.as_entire_binding(),
-                }],
+        let uniform_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Text Uniform Buffer"),
+                contents: bytemuck::bytes_of(&uniforms),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
+
+        let uniform_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Text Uniform Bind Group"),
+            layout: &self.uniform_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            }],
+        });
 
         self.text_objects.insert(
             id,
@@ -541,11 +552,7 @@ impl Renderer {
         texture
     }
 
-    fn create_text_vertex_buffer(
-        &self,
-        text_width: u32,
-        text_height: u32,
-    ) -> (wgpu::Buffer, u32) {
+    fn create_text_vertex_buffer(&self, text_width: u32, text_height: u32) -> (wgpu::Buffer, u32) {
         let screen_width = self.config.width.max(1) as f32;
         let screen_height = self.config.height.max(1) as f32;
 
@@ -557,13 +564,13 @@ impl Renderer {
 
         let vertices = Self::quad_vertices(half_width, half_height);
 
-        let vertex_buffer =
-            self.device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Text Vertex Buffer"),
-                    contents: bytemuck::cast_slice(&vertices),
-                    usage: wgpu::BufferUsages::VERTEX,
-                });
+        let vertex_buffer = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Text Vertex Buffer"),
+                contents: bytemuck::cast_slice(&vertices),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
 
         (vertex_buffer, vertices.len() as u32)
     }
@@ -598,10 +605,8 @@ impl Renderer {
                 text.alignment,
             );
 
-            let text_texture =
-                self.create_text_texture(&rgba_data, text_width, text_height);
-            let text_view =
-                text_texture.create_view(&wgpu::TextureViewDescriptor::default());
+            let text_texture = self.create_text_texture(&rgba_data, text_width, text_height);
+            let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
             let text_sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
                 label: Some("Text Sampler"),
@@ -611,21 +616,20 @@ impl Renderer {
                 ..Default::default()
             });
 
-            let text_bind_group =
-                self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("Text Bind Group"),
-                    layout: &self.texture_bind_group_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: wgpu::BindingResource::TextureView(&text_view),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::Sampler(&text_sampler),
-                        },
-                    ],
-                });
+            let text_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("Text Bind Group"),
+                layout: &self.texture_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&text_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&text_sampler),
+                    },
+                ],
+            });
 
             let (vertex_buffer, vertex_count) =
                 self.create_text_vertex_buffer(text_width, text_height);

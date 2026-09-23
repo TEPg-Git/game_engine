@@ -247,7 +247,6 @@ impl GameState {
         // BALL
         // ====================================================
 
-
         let ball_velocity = self.ball_velocity;
 
         if let Some(ball) = self.get_entity_mut(self.ball_id) {
