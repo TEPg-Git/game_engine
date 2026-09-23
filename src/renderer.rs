@@ -5,7 +5,7 @@ use wgpu::util::DeviceExt;
 use winit::window::Window;
 
 use crate::entity::Entity;
-use crate::graphics::{Uniforms, Vertex};
+use crate::graphics::{CameraUniforms, Uniforms, Vertex};
 use crate::sprite::Sprite;
 use crate::state::GameState;
 use crate::text::{Text, create_text_bitmap_with_options, load_font};
@@ -55,6 +55,8 @@ pub struct Renderer {
     // PIPELINE
     pub render_pipeline: wgpu::RenderPipeline,
     pub text_sampler: wgpu::Sampler,
+    pub camera_uniform_buffer: wgpu::Buffer,
+    pub camera_bind_group: wgpu::BindGroup,
 
     // PENDING SURFACE SIZE
     pending_width: u32,
@@ -111,6 +113,16 @@ impl Renderer {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -205,6 +217,28 @@ impl Renderer {
             ..Default::default()
         });
 
+        let camera_uniforms = CameraUniforms {
+            position: [0.0, 0.0],
+            zoom: 1.0,
+            _padding: 0.0,
+        };
+
+        let camera_uniform_buffer =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Camera Uniform Buffer"),
+                contents: bytemuck::bytes_of(&camera_uniforms),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
+
+        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Camera Uniform Bind Group"),
+            layout: &uniform_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 1,
+                resource: camera_uniform_buffer.as_entire_binding(),
+            }],
+        });
+
         Self {
             surface,
             device,
@@ -217,6 +251,8 @@ impl Renderer {
             uniform_bind_group_layout,
             render_pipeline,
             text_sampler,
+            camera_uniform_buffer,
+            camera_bind_group,
             render_objects: HashMap::new(),
             text_objects: HashMap::new(),
         }
@@ -261,8 +297,6 @@ impl Renderer {
                 position_rotation: [0.0, 0.0, 0.0, 0.0],
                 scale: [1.0, 1.0, 0.0, 0.0],
                 color: [1.0, 1.0, 1.0, 1.0],
-                camera_position: [0.0, 0.0],
-                camera_zoom: [1.0, 0.0],
             };
 
             let uniform_buffer =
@@ -276,10 +310,16 @@ impl Renderer {
             let uniform_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Entity Uniform Bind Group"),
                 layout: &self.uniform_bind_group_layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform_buffer.as_entire_binding(),
-                }],
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: uniform_buffer.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: self.camera_uniform_buffer.as_entire_binding(),
+                    },
+                ],
             });
 
             let sprite_bind_group = self.create_sprite_bind_group(sprite);
@@ -369,6 +409,18 @@ impl Renderer {
         self.update_text_object(0, &state.text);
         self.update_text_object(1, &state.score_text);
 
+        let camera_uniforms = CameraUniforms {
+            position: [state.camera.position[0], state.camera.position[1]],
+            zoom: state.camera.zoom,
+            _padding: 0.0,
+        };
+
+        self.queue.write_buffer(
+            &self.camera_uniform_buffer,
+            0,
+            bytemuck::bytes_of(&camera_uniforms),
+        );
+
         let output = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(output) => output,
             wgpu::CurrentSurfaceTexture::Suboptimal(output) => output,
@@ -435,8 +487,6 @@ impl Renderer {
                         0.0,
                     ],
                     color: [1.0, 1.0, 1.0, 1.0],
-                    camera_position: [state.camera.position[0], state.camera.position[1]],
-                    camera_zoom: [state.camera.zoom, 0.0],
                 };
 
                 self.queue.write_buffer(
@@ -513,10 +563,16 @@ impl Renderer {
         let uniform_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Text Uniform Bind Group"),
             layout: &self.uniform_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: uniform_buffer.as_entire_binding(),
-            }],
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.camera_uniform_buffer.as_entire_binding(),
+                },
+            ],
         });
 
         self.text_objects.insert(
@@ -624,8 +680,6 @@ impl Renderer {
             position_rotation: [text.position[0], text.position[1], text.rotation, 0.0],
             scale: [text.scale[0], text.scale[1], 0.0, 0.0],
             color: [text.color[0], text.color[1], text.color[2], text.opacity],
-            camera_position: [0.0, 0.0],
-            camera_zoom: [1.0, 0.0],
         }
     }
 
