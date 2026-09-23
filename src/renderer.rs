@@ -54,6 +54,7 @@ pub struct Renderer {
 
     // PIPELINE
     pub render_pipeline: wgpu::RenderPipeline,
+    pub text_sampler: wgpu::Sampler,
 
     // PENDING SURFACE SIZE
     pending_width: u32,
@@ -196,6 +197,14 @@ impl Renderer {
             cache: None,
         });
 
+        let text_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("Text Sampler"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
+            ..Default::default()
+        });
+
         Self {
             surface,
             device,
@@ -207,6 +216,7 @@ impl Renderer {
             texture_bind_group_layout,
             uniform_bind_group_layout,
             render_pipeline,
+            text_sampler,
             render_objects: HashMap::new(),
             text_objects: HashMap::new(),
         }
@@ -473,14 +483,6 @@ impl Renderer {
         let text_texture = self.create_text_texture(&rgba_data, text_width, text_height);
         let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let text_sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
-            label: Some("Text Sampler"),
-            mag_filter: wgpu::FilterMode::Linear,
-            min_filter: wgpu::FilterMode::Linear,
-            mipmap_filter: wgpu::MipmapFilterMode::Nearest,
-            ..Default::default()
-        });
-
         let text_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Text Bind Group"),
             layout: &self.texture_bind_group_layout,
@@ -491,7 +493,7 @@ impl Renderer {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&text_sampler),
+                    resource: wgpu::BindingResource::Sampler(&self.text_sampler),
                 },
             ],
         });
@@ -649,14 +651,6 @@ impl Renderer {
 
             let text_texture = self.create_text_texture(&rgba_data, text_width, text_height);
             let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-            let text_sampler = self.device.create_sampler(&wgpu::SamplerDescriptor {
-                label: Some("Text Sampler"),
-                mag_filter: wgpu::FilterMode::Linear,
-                min_filter: wgpu::FilterMode::Linear,
-                mipmap_filter: wgpu::MipmapFilterMode::Nearest,
-                ..Default::default()
-            });
 
             let text_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Text Bind Group"),
