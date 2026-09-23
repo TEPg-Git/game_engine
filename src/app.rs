@@ -3,24 +3,23 @@ use crate::sprite::Sprite;
 use crate::state::GameState;
 use crate::time::Time;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, WindowEvent},
-    event_loop::{ActiveEventLoop, ControlFlow},
+    event_loop::ActiveEventLoop,
     keyboard::{KeyCode, PhysicalKey},
     window::{Fullscreen, Window, WindowId},
 };
-
-// ============================================================
-// APP
-// ============================================================
 
 pub struct App {
     window: Option<Arc<Window>>,
     renderer: Option<Renderer>,
     game_state: GameState,
     time: Time,
+    resizing: bool,
+    last_resize: Option<Instant>,
 }
 
 impl App {
@@ -30,13 +29,16 @@ impl App {
             renderer: None,
             game_state: GameState::new(),
             time: Time::new(),
+            resizing: false,
+            last_resize: None,
         }
     }
 
-    fn toggle_fullscreen(&self) {
-        let Some(window) = &self.window else {
-            return;
-        };
+    fn toggle_fullscreen(&mut self) {
+        let Some(window) = &self.window else { return; };
+
+        self.resizing = true;
+        self.last_resize = Some(Instant::now());
 
         let fullscreen = if window.fullscreen().is_some() {
             None
@@ -45,7 +47,6 @@ impl App {
         };
 
         window.set_fullscreen(fullscreen);
-        window.request_redraw();
     }
 
     fn update(&mut self) {
@@ -56,10 +57,7 @@ impl App {
     fn render(&mut self) {
         self.update();
 
-        let Some(renderer) = &mut self.renderer else {
-            return;
-        };
-
+        let Some(renderer) = &mut self.renderer else { return; };
         renderer.render(&self.game_state);
     }
 
@@ -67,12 +65,24 @@ impl App {
         let player_sprite_size = [0.05, 0.4];
         let ball_sprite_size = [0.2, 0.2];
 
-        let player_sprite_1 =
-            Sprite::from_file(&renderer.device, &renderer.queue, "assets/textures/Player.png", player_sprite_size);
-        let player_sprite_2 =
-            Sprite::from_file(&renderer.device, &renderer.queue, "assets/textures/Player.png", player_sprite_size);
-        let ball_sprite =
-            Sprite::from_file(&renderer.device, &renderer.queue, "assets/textures/Ball.png", ball_sprite_size);
+        let player_sprite_1 = Sprite::from_file(
+            &renderer.device,
+            &renderer.queue,
+            "assets/textures/Player.png",
+            player_sprite_size,
+        );
+        let player_sprite_2 = Sprite::from_file(
+            &renderer.device,
+            &renderer.queue,
+            "assets/textures/Player.png",
+            player_sprite_size,
+        );
+        let ball_sprite = Sprite::from_file(
+            &renderer.device,
+            &renderer.queue,
+            "assets/textures/Ball.png",
+            ball_sprite_size,
+        );
 
         let player1_id = self.game_state.player1_id;
         let player2_id = self.game_state.player2_id;
@@ -81,11 +91,9 @@ impl App {
         if let Some(entity) = self.game_state.get_entity_mut(player1_id) {
             entity.set_sprite(player_sprite_1);
         }
-
         if let Some(entity) = self.game_state.get_entity_mut(player2_id) {
             entity.set_sprite(player_sprite_2);
         }
-
         if let Some(entity) = self.game_state.get_entity_mut(ball_id) {
             entity.set_sprite(ball_sprite);
         }
@@ -101,10 +109,11 @@ impl App {
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        event_loop.set_control_flow(ControlFlow::Poll);
-
-        let window_attributes = Window::default_attributes().with_title("East Engine");
-        let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
+        let window = Arc::new(
+            event_loop
+                .create_window(Window::default_attributes().with_title("East Engine"))
+                .unwrap(),
+        );
 
         let mut renderer = Renderer::new(window.clone());
         self.initialize_scene(&mut renderer);
@@ -127,15 +136,19 @@ impl ApplicationHandler for App {
             WindowEvent::CloseRequested => event_loop.exit(),
 
             WindowEvent::Resized(size) => {
-                if let Some(renderer) = &mut self.renderer {
-                    renderer.resize(size.width, size.height);
+                if size.width == 0 || size.height == 0 {
+                    self.resizing = true;
+                    return;
                 }
 
-                // Windows runs a nested modal loop while dragging the window.
-                // Requesting a redraw here makes the new surface size visible
-                // during that loop instead of waiting for AboutToWait.
-                if let Some(window) = &self.window {
-                    window.request_redraw();
+                self.resizing = true;
+                self.last_resize = Some(Instant::now());
+
+                // IMPORTANT:
+                // Do not configure the wgpu surface from inside the Windows
+                // interactive resize/fullscreen loop. Only remember the size.
+                if let Some(renderer) = &mut self.renderer {
+                    renderer.set_size(size.width, size.height);
                 }
             }
 
@@ -148,7 +161,7 @@ impl ApplicationHandler for App {
                         return;
                     }
 
-                    if key_code == KeyCode::KeyF && pressed {
+                    if key_code == KeyCode::KeyF && pressed && !event.repeat {
                         self.toggle_fullscreen();
                     } else {
                         self.game_state.keyboard.handle_keyboard(key_code, pressed);
@@ -157,7 +170,17 @@ impl ApplicationHandler for App {
             }
 
             WindowEvent::RedrawRequested => {
+                // Windows can send redraw requests while its modal resize
+                // loop is active. Never acquire/present a wgpu frame here.
+                if self.resizing {
+                    return;
+                }
+
                 self.render();
+
+                if let Some(window) = &self.window {
+                    window.request_redraw();
+                }
             }
 
             _ => {}
@@ -165,10 +188,21 @@ impl ApplicationHandler for App {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        // ControlFlow::Poll gives the game its continuous update/render loop
-        // without recursively scheduling redraws from RedrawRequested.
-        if let Some(window) = &self.window {
-            window.request_redraw();
+        if self.resizing {
+            if let Some(last_resize) = self.last_resize {
+                if last_resize.elapsed() >= Duration::from_millis(100) {
+                    self.resizing = false;
+                    self.last_resize = None;
+
+                    if let Some(renderer) = &mut self.renderer {
+                        renderer.apply_pending_resize();
+                    }
+
+                    if let Some(window) = &self.window {
+                        window.request_redraw();
+                    }
+                }
+            }
         }
     }
 }
