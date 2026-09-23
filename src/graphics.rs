@@ -9,6 +9,18 @@ pub struct Vertex {
     pub tex_coords: [f32; 2],
 }
 
+// ============================================================
+// CAMERA UNIFORMS
+// ============================================================
+
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct CameraUniforms {
+    pub position: [f32; 2],
+    pub zoom: f32,
+    pub _padding: f32,
+}
+
 impl Vertex {
     pub const ATTRIBS: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![
         0 => Float32x2,
@@ -39,10 +51,4 @@ pub struct Uniforms {
 
     // color
     pub color: [f32; 4],
-
-    // camera position
-    pub camera_position: [f32; 2],
-
-    // camera zoom + padding
-    pub camera_zoom: [f32; 2],
 }

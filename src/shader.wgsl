@@ -6,14 +6,19 @@ struct Uniforms {
     position_rotation: vec4<f32>,
     scale: vec4<f32>,
     color: vec4<f32>,
+};
 
-    camera_position: vec2<f32>,
-    camera_zoom: vec2<f32>,
+struct CameraUniforms {
+    position: vec2<f32>,
+    zoom: f32,
+    padding: f32,
 };
 
 @group(0) @binding(0)
 var<uniform> uniforms: Uniforms;
 
+@group(0) @binding(1)
+var<uniform> camera: CameraUniforms;
 // ============================================================
 // VERTEX INPUT
 // ============================================================
@@ -84,9 +89,9 @@ fn vs_main(vertex: VertexInput) -> VertexOutput {
     // CAMERA
     // ========================================================
 
-    position -= uniforms.camera_position;
+    position -= camera.position;
 
-    position *= uniforms.camera_zoom.x;
+    position *= camera.zoom;
 
     // ========================================================
     // OUTPUT
