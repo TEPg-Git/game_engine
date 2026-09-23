@@ -198,6 +198,11 @@ impl ApplicationHandler for App {
                         renderer.apply_pending_resize();
                     }
 
+                    // The game was intentionally not rendered during the
+                    // Windows resize loop. Start the next frame with a fresh
+                    // timestamp so the pause is not applied to gameplay.
+                    self.time.reset();
+
                     if let Some(window) = &self.window {
                         window.request_redraw();
                     }
