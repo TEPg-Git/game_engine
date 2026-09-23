@@ -120,25 +120,6 @@ impl App {
         renderer.create_text_object(0, self.game_state.text.clone());
         renderer.create_text_object(1, self.game_state.score_text.clone());
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        if !self.resize_pending {
-            return;
-        }
-
-        let Some(last_resize) = self.last_resize else {
-            return;
-        };
-
-        if last_resize.elapsed() >= Duration::from_millis(100) {
-            self.resize_pending = false;
-            self.last_resize = None;
-
-            if let Some(window) = &self.window {
-                window.request_redraw();
-            }
-        }
-    }
-
     }
 }
 
@@ -207,6 +188,25 @@ impl ApplicationHandler for App {
             }
 
             _ => {}
+        }
+    }
+
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        if !self.resize_pending {
+            return;
+        }
+
+        let Some(last_resize) = self.last_resize else {
+            return;
+        };
+
+        if last_resize.elapsed() >= Duration::from_millis(100) {
+            self.resize_pending = false;
+            self.last_resize = None;
+
+            if let Some(window) = &self.window {
+                window.request_redraw();
+            }
         }
     }
 }
