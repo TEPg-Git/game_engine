@@ -7,7 +7,7 @@ use std::sync::Arc;
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, WindowEvent},
-    event_loop::ActiveEventLoop,
+    event_loop::{ActiveEventLoop, ControlFlow},
     keyboard::{KeyCode, PhysicalKey},
     window::{Fullscreen, Window, WindowId},
 };
@@ -17,16 +17,9 @@ use winit::{
 // ============================================================
 
 pub struct App {
-    // WINDOW
     window: Option<Arc<Window>>,
-
-    // RENDERER
     renderer: Option<Renderer>,
-
-    // GAME STATE
     game_state: GameState,
-
-    // TIME
     time: Time,
 }
 
@@ -108,6 +101,8 @@ impl App {
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        event_loop.set_control_flow(ControlFlow::Poll);
+
         let window_attributes = Window::default_attributes().with_title("East Engine");
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
@@ -129,15 +124,16 @@ impl ApplicationHandler for App {
         event: WindowEvent,
     ) {
         match event {
-            WindowEvent::CloseRequested => {
-                event_loop.exit();
-            }
+            WindowEvent::CloseRequested => event_loop.exit(),
 
             WindowEvent::Resized(size) => {
                 if let Some(renderer) = &mut self.renderer {
                     renderer.resize(size.width, size.height);
                 }
 
+                // Windows runs a nested modal loop while dragging the window.
+                // Requesting a redraw here makes the new surface size visible
+                // during that loop instead of waiting for AboutToWait.
                 if let Some(window) = &self.window {
                     window.request_redraw();
                 }
@@ -162,13 +158,17 @@ impl ApplicationHandler for App {
 
             WindowEvent::RedrawRequested => {
                 self.render();
-
-                if let Some(window) = &self.window {
-                    window.request_redraw();
-                }
             }
 
             _ => {}
+        }
+    }
+
+    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        // ControlFlow::Poll gives the game its continuous update/render loop
+        // without recursively scheduling redraws from RedrawRequested.
+        if let Some(window) = &self.window {
+            window.request_redraw();
         }
     }
 }
