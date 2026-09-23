@@ -3,14 +3,13 @@ use crate::sprite::Sprite;
 use crate::state::GameState;
 use crate::time::Time;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, WindowEvent},
     event_loop::ActiveEventLoop,
     keyboard::{KeyCode, PhysicalKey},
-    window::{Window, WindowId},
+    window::{Fullscreen, Window, WindowId},
 };
 
 // ============================================================
@@ -29,12 +28,6 @@ pub struct App {
 
     // TIME
     time: Time,
-
-    // RESIZE
-    // Windows can emit a stream of resize events while the user is dragging.
-    // Wait briefly after the last event before requesting a frame.
-    resize_pending: bool,
-    last_resize: Option<Instant>,
 }
 
 impl App {
@@ -44,8 +37,6 @@ impl App {
             renderer: None,
             game_state: GameState::new(),
             time: Time::new(),
-            resize_pending: false,
-            last_resize: None,
         }
     }
 
@@ -54,21 +45,14 @@ impl App {
             return;
         };
 
-        if window.fullscreen().is_some() {
-            window.set_fullscreen(None);
+        let fullscreen = if window.fullscreen().is_some() {
+            None
         } else {
-            window.set_fullscreen(Some(
-                winit::window::Fullscreen::Borderless(None),
-            ));
-        }
-    }
-
-    fn resize(&mut self, width: u32, height: u32) {
-        let Some(renderer) = &mut self.renderer else {
-            return;
+            Some(Fullscreen::Borderless(window.current_monitor()))
         };
 
-        renderer.resize(width, height);
+        window.set_fullscreen(fullscreen);
+        window.request_redraw();
     }
 
     fn update(&mut self) {
@@ -119,7 +103,6 @@ impl App {
 
         renderer.create_text_object(0, self.game_state.text.clone());
         renderer.create_text_object(1, self.game_state.score_text.clone());
-
     }
 }
 
@@ -151,9 +134,13 @@ impl ApplicationHandler for App {
             }
 
             WindowEvent::Resized(size) => {
-                self.resize(size.width, size.height);
-                self.resize_pending = true;
-                self.last_resize = Some(Instant::now());
+                if let Some(renderer) = &mut self.renderer {
+                    renderer.resize(size.width, size.height);
+                }
+
+                if let Some(window) = &self.window {
+                    window.request_redraw();
+                }
             }
 
             WindowEvent::KeyboardInput { event, .. } => {
@@ -176,37 +163,12 @@ impl ApplicationHandler for App {
             WindowEvent::RedrawRequested => {
                 self.render();
 
-                // Do not continuously request redraws while the window is
-                // being resized. The OS can generate a large number of
-                // resize events during a drag, and rendering during that
-                // interaction can stall the UI thread.
-                if !self.resize_pending {
-                    if let Some(window) = &self.window {
-                        window.request_redraw();
-                    }
+                if let Some(window) = &self.window {
+                    window.request_redraw();
                 }
             }
 
             _ => {}
-        }
-    }
-
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        if !self.resize_pending {
-            return;
-        }
-
-        let Some(last_resize) = self.last_resize else {
-            return;
-        };
-
-        if last_resize.elapsed() >= Duration::from_millis(100) {
-            self.resize_pending = false;
-            self.last_resize = None;
-
-            if let Some(window) = &self.window {
-                window.request_redraw();
-            }
         }
     }
 }
