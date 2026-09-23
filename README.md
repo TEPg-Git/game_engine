@@ -10,6 +10,8 @@ The engine is being developed with two primary goals:
 The project focuses on understanding how rendering engines work internally — from creating a window and communicating with the GPU to rendering geometry, textures, sprites, text, transforms, cameras, and eventually building a complete engine architecture.
 
 > 🚧 **Status: Early Development — 2D Engine Development**
+>
+> The Pong prototype has been completed and released as a standalone Windows build. Current work is focused on engine optimization and cleanup.
 
 ---
 
@@ -27,6 +29,12 @@ Rather than building on top of an existing game engine, East Engine is being dev
 This allows each system to be implemented and understood individually, from low-level GPU rendering to higher-level engine architecture.
 
 The current priority is to complete the **2D engine foundation** before beginning 3D rendering.
+
+The repository now uses the following branch workflow:
+
+* `main` — stable completed Pong milestone
+* `pong-game` — Pong development history
+* `optimizations` — current engine optimization and cleanup work
 
 ---
 
@@ -55,6 +63,9 @@ The current priority is to complete the **2D engine foundation** before beginnin
 * Window resizing
 * Separate text and sprite rendering resources
 * GPU uniform-based object transforms
+* Shared GPU camera uniform buffer
+* Cached font loading
+* Shared text sampler
 * GPU uniform-based text transforms
 * Independent text color and sprite color
 
@@ -175,6 +186,9 @@ East Engine is being developed incrementally, with each major system implemented
 * [x] GPU-based text transforms
 * [x] Independent per-object uniform buffers
 * [x] Independent sprite and text GPU resources
+* [x] Shared camera GPU uniform buffer
+* [x] Cached font loading
+* [x] Shared text sampler
 
 ---
 
@@ -272,6 +286,29 @@ The goal is to complete the following 2D systems before beginning 3D rendering.
 * [ ] Layer/depth ordering
 * [ ] Sprite batching
 * [ ] Rendering improvements
+
+---
+
+## Optimization Work
+
+Current optimization work is focused on improving the engine without changing gameplay behavior.
+
+Completed optimizations include:
+
+* [x] Cache the parsed font so it is loaded only once
+* [x] Reuse a shared text sampler instead of creating one for each text resource
+* [x] Move camera data into a shared GPU uniform buffer
+* [x] Update camera GPU data once per frame
+* [x] Reduce per-object uniform data to entity-specific values
+* [x] Protect game delta time from long resize pauses
+
+Planned optimization work includes:
+
+* [ ] Renderer cleanup and warning reduction
+* [ ] Asset/resource manager
+* [ ] Resource caching improvements
+* [ ] Rendering and GPU resource lifetime improvements
+* [ ] Further profiling and performance investigation
 
 ---
 
@@ -384,10 +421,10 @@ The current Pong prototype includes:
 * [ ] Start / pause / restart states
 * [ ] Main menu
 * [ ] Improved UI
-* [ ] Standalone release
-* [ ] Test on another computer
+* [x] Standalone release
+* [x] Test on another computer
 
-The demo is an important milestone because it will demonstrate that East Engine can be used to build an actual playable application rather than only rendering technical test scenes.
+The Pong game is an important milestone because it demonstrates that East Engine can be used to build and package an actual playable application rather than only rendering technical test scenes.
 
 ---
 
