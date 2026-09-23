@@ -8,23 +8,21 @@ use crate::texture::Texture;
 // ============================================================
 
 pub struct Sprite {
+    // The visual data needed to render a sprite.
+    //
+    // Texture ownership is kept here for the current prototype.
+    // A future asset manager can replace this with a texture handle.
     pub texture: Texture,
 
+    // World-space size of the sprite quad.
     pub size: [f32; 2],
 }
 
-// ============================================================
-// IMPLEMENTATION
-// ============================================================
-
 impl Sprite {
-    // ========================================================
-    // CREATE SPRITE FROM FILE
-    // ========================================================
-
     pub fn from_file(device: &Device, queue: &Queue, path: &str, size: [f32; 2]) -> Self {
-        let texture = Texture::from_file(device, queue, path);
-
-        Self { texture, size }
+        Self {
+            texture: Texture::from_file(device, queue, path),
+            size,
+        }
     }
 }
