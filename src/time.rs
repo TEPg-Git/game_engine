@@ -1,4 +1,5 @@
 use std::time::Instant;
+
 //========================================================
 // TIME
 // =======================================================
@@ -19,8 +20,20 @@ impl Time {
     // Updates the time elapsed since the last frame.
     pub fn update(&mut self) {
         let current_frame = Instant::now();
-        self.delta_time = (current_frame - self.last_frame).as_secs_f32();
+
+        // A resize/fullscreen transition can pause rendering for a long
+        // time. Never feed that entire pause into gameplay physics.
+        self.delta_time = (current_frame - self.last_frame)
+            .as_secs_f32()
+            .min(0.1);
+
         self.last_frame = current_frame;
+    }
+
+    // Reset the frame timer after a period where the game was not rendering.
+    pub fn reset(&mut self) {
+        self.last_frame = Instant::now();
+        self.delta_time = 0.0;
     }
 
     // Returns the time elapsed since the last frame in seconds.
