@@ -56,7 +56,6 @@ pub struct Renderer {
     pub render_pipeline: wgpu::RenderPipeline,
     pub text_sampler: wgpu::Sampler,
     pub camera_uniform_buffer: wgpu::Buffer,
-    pub camera_bind_group: wgpu::BindGroup,
 
     // PENDING SURFACE SIZE
     pending_width: u32,
@@ -230,15 +229,6 @@ impl Renderer {
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
 
-        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Camera Uniform Bind Group"),
-            layout: &uniform_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 1,
-                resource: camera_uniform_buffer.as_entire_binding(),
-            }],
-        });
-
         Self {
             surface,
             device,
@@ -252,7 +242,6 @@ impl Renderer {
             render_pipeline,
             text_sampler,
             camera_uniform_buffer,
-            camera_bind_group,
             render_objects: HashMap::new(),
             text_objects: HashMap::new(),
         }
