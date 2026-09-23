@@ -662,7 +662,7 @@ impl Renderer {
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&text_sampler),
+                        resource: wgpu::BindingResource::Sampler(&self.text_sampler),
                     },
                 ],
             });
