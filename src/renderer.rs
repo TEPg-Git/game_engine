@@ -55,6 +55,11 @@ pub struct Renderer {
     // PIPELINE
     pub render_pipeline: wgpu::RenderPipeline,
 
+    // PENDING SURFACE SIZE
+    pending_width: u32,
+    pending_height: u32,
+    resize_pending: bool,
+
     // RENDER OBJECTS
     pub render_objects: HashMap<u32, RenderObject>,
     pub text_objects: HashMap<u32, TextObject>,
@@ -199,6 +204,9 @@ impl Renderer {
             texture_bind_group_layout,
             uniform_bind_group_layout,
             render_pipeline,
+            pending_width: config.width,
+            pending_height: config.height,
+            resize_pending: false,
             render_objects: HashMap::new(),
             text_objects: HashMap::new(),
         }
@@ -214,6 +222,27 @@ impl Renderer {
 
         // Configure immediately so the next redraw uses the exact surface size.
         self.surface.configure(&self.device, &self.config);
+    }
+
+    pub fn set_size(&mut self, width: u32, height: u32) {
+        if width == 0 || height == 0 {
+            return;
+        }
+
+        self.pending_width = width;
+        self.pending_height = height;
+        self.resize_pending = true;
+    }
+
+    pub fn apply_pending_resize(&mut self) {
+        if !self.resize_pending {
+            return;
+        }
+
+        self.config.width = self.pending_width.max(1);
+        self.config.height = self.pending_height.max(1);
+        self.surface.configure(&self.device, &self.config);
+        self.resize_pending = false;
     }
 
     pub fn create_render_object(&mut self, entity: &Entity) {
