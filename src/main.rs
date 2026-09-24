@@ -1,5 +1,6 @@
 mod app;
 mod camera;
+mod diagnostics;
 mod entity;
 mod graphics;
 mod input;

@@ -46,6 +46,10 @@ impl Time {
         self.delta_time
     }
 
+    pub fn raw_delta_time(&self) -> f32 {
+        self.raw_delta_time
+    }
+
     pub fn fps(&self) -> f32 {
         self.fps_counter.fps()
     }

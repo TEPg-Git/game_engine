@@ -1,3 +1,4 @@
+use crate::diagnostics::Diagnostics;
 use crate::renderer::Renderer;
 use crate::sprite::Sprite;
 use crate::state::GameState;
@@ -18,6 +19,7 @@ pub struct App {
     renderer: Option<Renderer>,
     game_state: GameState,
     time: Time,
+    diagnostics: Diagnostics,
     resizing: bool,
     last_resize: Option<Instant>,
 }
@@ -29,6 +31,7 @@ impl App {
             renderer: None,
             game_state: GameState::new(),
             time: Time::new(),
+            diagnostics: Diagnostics::new(),
             resizing: false,
             last_resize: None,
         }
@@ -53,7 +56,7 @@ impl App {
 
     fn update(&mut self) {
         self.time.update();
-        println!("FPS: {}", self.time.fps());
+        self.diagnostics.update(&self.time);
         self.game_state.update(self.time.delta_time());
     }
 
