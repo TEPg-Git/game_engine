@@ -35,7 +35,9 @@ impl App {
     }
 
     fn toggle_fullscreen(&mut self) {
-        let Some(window) = &self.window else { return; };
+        let Some(window) = &self.window else {
+            return;
+        };
 
         self.resizing = true;
         self.last_resize = Some(Instant::now());
@@ -51,13 +53,16 @@ impl App {
 
     fn update(&mut self) {
         self.time.update();
+        println!("FPS: {}", self.time.fps());
         self.game_state.update(self.time.delta_time());
     }
 
     fn render(&mut self) {
         self.update();
 
-        let Some(renderer) = &mut self.renderer else { return; };
+        let Some(renderer) = &mut self.renderer else {
+            return;
+        };
         renderer.render(&self.game_state);
     }
 
