@@ -390,13 +390,15 @@ impl Renderer {
         ]
     }
 
-    pub fn render(&mut self, state: &GameState) {
+    pub fn render(&mut self, state: &GameState, fps_text: &Text, frame_time_text: &Text) {
         if self.config.width == 0 || self.config.height == 0 {
             return;
         }
 
         self.update_text_object(0, &state.text);
         self.update_text_object(1, &state.score_text);
+        self.update_text_object(2, fps_text);
+        self.update_text_object(3, frame_time_text);
 
         let camera_uniforms = CameraUniforms {
             position: [state.camera.position[0], state.camera.position[1]],
