@@ -3,6 +3,7 @@ use crate::renderer::Renderer;
 use crate::sprite::Sprite;
 use crate::state::GameState;
 use crate::time::Time;
+
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -112,6 +113,8 @@ impl App {
 
         renderer.create_text_object(0, self.game_state.text.clone());
         renderer.create_text_object(1, self.game_state.score_text.clone());
+        renderer.create_text_object(2, self.diagnostics.fps_text.clone());
+        renderer.create_text_object(3, self.diagnostics.frame_time_ms_text.clone());
     }
 }
 
