@@ -67,7 +67,12 @@ impl App {
         let Some(renderer) = &mut self.renderer else {
             return;
         };
-        renderer.render(&self.game_state);
+
+        renderer.render(
+            &self.game_state,
+            &self.diagnostics.fps_text,
+            &self.diagnostics.frame_time_ms_text,
+        );
     }
 
     fn initialize_scene(&mut self, renderer: &mut Renderer) {
@@ -155,9 +160,6 @@ impl ApplicationHandler for App {
                 self.resizing = true;
                 self.last_resize = Some(Instant::now());
 
-                // IMPORTANT:
-                // Do not configure the wgpu surface from inside the Windows
-                // interactive resize/fullscreen loop. Only remember the size.
                 if let Some(renderer) = &mut self.renderer {
                     renderer.set_size(size.width, size.height);
                 }
@@ -181,8 +183,6 @@ impl ApplicationHandler for App {
             }
 
             WindowEvent::RedrawRequested => {
-                // Windows can send redraw requests while its modal resize
-                // loop is active. Never acquire/present a wgpu frame here.
                 if self.resizing {
                     return;
                 }
@@ -209,9 +209,6 @@ impl ApplicationHandler for App {
                         renderer.apply_pending_resize();
                     }
 
-                    // The game was intentionally not rendered during the
-                    // Windows resize loop. Start the next frame with a fresh
-                    // timestamp so the pause is not applied to gameplay.
                     self.time.reset();
 
                     if let Some(window) = &self.window {
