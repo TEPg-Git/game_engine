@@ -109,26 +109,28 @@ impl Renderer {
         let uniform_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Uniform Bind Group Layout"),
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                }],
+                ],
             });
 
         let texture_bind_group_layout =
@@ -222,12 +224,11 @@ impl Renderer {
             _padding: 0.0,
         };
 
-        let camera_uniform_buffer =
-            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Camera Uniform Buffer"),
-                contents: bytemuck::bytes_of(&camera_uniforms),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
+        let camera_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Camera Uniform Buffer"),
+            contents: bytemuck::bytes_of(&camera_uniforms),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
 
         Self {
             surface,
@@ -245,18 +246,6 @@ impl Renderer {
             render_objects: HashMap::new(),
             text_objects: HashMap::new(),
         }
-    }
-
-    pub fn resize(&mut self, width: u32, height: u32) {
-        if width == 0 || height == 0 {
-            return;
-        }
-
-        self.config.width = width;
-        self.config.height = height;
-
-        // Configure immediately so the next redraw uses the exact surface size.
-        self.surface.configure(&self.device, &self.config);
     }
 
     pub fn set_size(&mut self, width: u32, height: u32) {
@@ -512,7 +501,7 @@ impl Renderer {
         let font = load_font();
 
         let (rgba_data, text_width, text_height) = create_text_bitmap_with_options(
-            &font,
+            font,
             &text.content,
             text.font_size,
             text.line_spacing,
@@ -590,8 +579,7 @@ impl Renderer {
         let unpadded_bytes_per_row = text_width * 4;
 
         let padded_bytes_per_row = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
-            * ((unpadded_bytes_per_row + wgpu::COPY_BYTES_PER_ROW_ALIGNMENT - 1)
-                / wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+            * unpadded_bytes_per_row.div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
 
         let mut padded_data = vec![0u8; (padded_bytes_per_row * text_height) as usize];
 
@@ -685,7 +673,7 @@ impl Renderer {
             let font = load_font();
 
             let (rgba_data, text_width, text_height) = create_text_bitmap_with_options(
-                &font,
+                font,
                 &text.content,
                 text.font_size,
                 text.line_spacing,
