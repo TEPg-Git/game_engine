@@ -302,13 +302,18 @@ Completed optimizations include:
 * [x] Reduce per-object uniform data to entity-specific values
 * [x] Protect game delta time from long resize pauses
 
-Planned optimization work includes:
+Upcoming optimization goals include:
 
 * [ ] Renderer cleanup and warning reduction
+* [ ] Add frame-time and rendering diagnostics
 * [ ] Asset/resource manager
-* [ ] Resource caching improvements
-* [ ] Rendering and GPU resource lifetime improvements
-* [ ] Further profiling and performance investigation
+* [ ] Shared asset and texture caching
+* [ ] Improve GPU resource ownership and lifetime management
+* [ ] Reduce unnecessary per-frame GPU buffer updates
+* [ ] Improve entity/render-object lookup and update efficiency
+* [ ] Investigate render batching and reduce draw-call overhead
+* [ ] Profile CPU and GPU performance before and after major changes
+* [ ] Validate optimizations without changing Pong gameplay behavior
 
 ---
 
