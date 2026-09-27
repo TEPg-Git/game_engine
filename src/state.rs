@@ -3,10 +3,6 @@ use crate::entity::Entity;
 use crate::input::KeyboardState;
 use crate::text::{Text, TextAlignment};
 
-// ============================================================
-// GAME STATE
-// ============================================================
-
 pub struct GameState {
     pub score_1: u32,
     pub score_2: u32,
@@ -22,51 +18,37 @@ pub struct GameState {
     next_entity_id: u32,
     pub text: Text,
     pub score_text: Text,
+    last_score_1: u32,
+    last_score_2: u32,
 }
 
 impl GameState {
     pub fn new() -> Self {
         let mut game_state = Self {
-            score_1: 0,
-            score_2: 0,
-            max_score: 5,
+            score_1: 0, score_2: 0, max_score: 5,
             keyboard: KeyboardState::default(),
             entities: Vec::with_capacity(3),
-            player1_id: 0,
-            player2_id: 0,
-            ball_id: 0,
+            player1_id: 0, player2_id: 0, ball_id: 0,
             ball_velocity: [-0.4, -0.5],
-            camera: Camera::new(),
-            speed: 1.0,
-            next_entity_id: 0,
+            camera: Camera::new(), speed: 1.0, next_entity_id: 0,
             text: {
                 let mut text = Text::new("EAST ENGINE PONG GAME", 24.0);
                 text.set_position(0.0, 0.9);
-                text.set_color(1.0, 1.0, 1.0, 1.0);
                 text.set_alignment(TextAlignment::Center);
                 text.set_line_spacing(1.2);
                 text.set_letter_spacing(0.5);
-                text.set_scale(1.0, 1.0);
-                text.set_rotation(0.0);
-                text.set_opacity(1.0);
-                text.set_visible(true);
-                text.set_max_width(None);
                 text
             },
             score_text: {
                 let mut text = Text::new("0 - 0", 24.0);
                 text.set_position(0.0, 0.8);
-                text.set_color(1.0, 1.0, 1.0, 1.0);
                 text.set_alignment(TextAlignment::Center);
                 text.set_line_spacing(1.2);
                 text.set_letter_spacing(0.5);
-                text.set_scale(1.0, 1.0);
-                text.set_rotation(0.0);
-                text.set_opacity(1.0);
-                text.set_visible(true);
-                text.set_max_width(None);
                 text
             },
+            last_score_1: 0,
+            last_score_2: 0,
         };
 
         game_state.player1_id = game_state.create_entity("Player_1");
@@ -95,47 +77,28 @@ impl GameState {
     }
 
     pub fn get_entity_mut(&mut self, id: u32) -> Option<&mut Entity> {
-        self.entities
-            .get_mut(id as usize)
-            .filter(|entity| entity.id == id)
+        self.entities.get_mut(id as usize).filter(|entity| entity.id == id)
     }
 
     pub fn update(&mut self, delta_time: f32) {
+        let speed = self.speed;
         let key_w = self.keyboard.w;
         let key_s = self.keyboard.s;
-        let speed = self.speed;
-
         if let Some(player_1) = self.get_entity_mut(self.player1_id) {
-            if key_w {
-                player_1.translate(0.0, speed * delta_time);
-            }
-            if key_s {
-                player_1.translate(0.0, -speed * delta_time);
-            }
-            player_1.transform.position[1] =
-                player_1.transform.position[1].clamp(-0.75, 0.75);
+            if key_w { player_1.translate(0.0, speed * delta_time); }
+            if key_s { player_1.translate(0.0, -speed * delta_time); }
+            player_1.transform.position[1] = player_1.transform.position[1].clamp(-0.75, 0.75);
         }
 
         let key_up = self.keyboard.up;
         let key_down = self.keyboard.down;
-
         if let Some(player_2) = self.get_entity_mut(self.player2_id) {
-            if key_up {
-                player_2.translate(0.0, speed * delta_time);
-            }
-            if key_down {
-                player_2.translate(0.0, -speed * delta_time);
-            }
-            player_2.transform.position[1] =
-                player_2.transform.position[1].clamp(-0.75, 0.75);
+            if key_up { player_2.translate(0.0, speed * delta_time); }
+            if key_down { player_2.translate(0.0, -speed * delta_time); }
+            player_2.transform.position[1] = player_2.transform.position[1].clamp(-0.75, 0.75);
         }
 
-        let score_1 = self.score_1;
-        let score_2 = self.score_2;
-        self.score_text.set_content(&format!("{} - {}", score_1, score_2));
-
         let ball_velocity = self.ball_velocity;
-
         if let Some(ball) = self.get_entity_mut(self.ball_id) {
             ball.translate(ball_velocity[0] * delta_time, ball_velocity[1] * delta_time);
         }
@@ -158,25 +121,19 @@ impl GameState {
                 bounced = true;
             }
         }
+        if bounced { self.ball_velocity[1] = -self.ball_velocity[1]; }
 
-        if bounced {
-            self.ball_velocity[1] = -self.ball_velocity[1];
-        }
-
-        let current_ball_velocity_x = self.ball_velocity[0];
         if let Some(ball) = self.get_entity_mut(ball_id) {
             if ball.transform.position[0] - ball_half_width > 1.0 {
                 ball.transform.position = [0.0, 0.0];
-                self.ball_velocity[0] = -current_ball_velocity_x;
+                self.ball_velocity[0] = -self.ball_velocity[0];
                 self.score_2 += 1;
             }
         }
-
-        let current_ball_velocity_x = self.ball_velocity[0];
         if let Some(ball) = self.get_entity_mut(ball_id) {
             if ball.transform.position[0] + ball_half_width < -1.0 {
                 ball.transform.position = [0.0, 0.0];
-                self.ball_velocity[0] = -current_ball_velocity_x;
+                self.ball_velocity[0] = -self.ball_velocity[0];
                 self.score_1 += 1;
             }
         }
@@ -186,22 +143,16 @@ impl GameState {
             let sprite = player_2.sprite.as_ref().expect("Player 2 sprite missing");
             (player_2.transform.position[1], sprite.size[0] * 0.5, sprite.size[1] * 0.5)
         };
-
         let ball_velocity_x = self.ball_velocity[0];
         if let Some(ball) = self.get_entity_mut(ball_id) {
             let ball_x = ball.transform.position[0];
             let ball_y = ball.transform.position[1];
             let player_x = 0.8;
-
-            let x_collision =
-                ball_x + ball_half_width >= player_x - player_2_half_width;
-            let y_collision =
-                ball_y + ball_half_height >= player_2_y - player_2_half_height
-                    && ball_y - ball_half_height <= player_2_y + player_2_half_height;
-
+            let x_collision = ball_x + ball_half_width >= player_x - player_2_half_width;
+            let y_collision = ball_y + ball_half_height >= player_2_y - player_2_half_height
+                && ball_y - ball_half_height <= player_2_y + player_2_half_height;
             if x_collision && y_collision && ball_velocity_x > 0.0 {
-                ball.transform.position[0] =
-                    player_x - player_2_half_width - ball_half_width;
+                ball.transform.position[0] = player_x - player_2_half_width - ball_half_width;
                 self.ball_velocity[0] = -self.ball_velocity[0];
             }
         }
@@ -211,24 +162,24 @@ impl GameState {
             let sprite = player_1.sprite.as_ref().expect("Player 1 sprite missing");
             (player_1.transform.position[1], sprite.size[0] * 0.5, sprite.size[1] * 0.5)
         };
-
         let ball_velocity_x = self.ball_velocity[0];
         if let Some(ball) = self.get_entity_mut(ball_id) {
             let ball_x = ball.transform.position[0];
             let ball_y = ball.transform.position[1];
             let player_x = -0.8;
-
-            let x_collision =
-                ball_x - ball_half_width <= player_x + player_1_half_width;
-            let y_collision =
-                ball_y + ball_half_height >= player_1_y - player_1_half_height
-                    && ball_y - ball_half_height <= player_1_y + player_1_half_height;
-
+            let x_collision = ball_x - ball_half_width <= player_x + player_1_half_width;
+            let y_collision = ball_y + ball_half_height >= player_1_y - player_1_half_height
+                && ball_y - ball_half_height <= player_1_y + player_1_half_height;
             if x_collision && y_collision && ball_velocity_x < 0.0 {
-                ball.transform.position[0] =
-                    player_x + player_1_half_width + ball_half_width;
+                ball.transform.position[0] = player_x + player_1_half_width + ball_half_width;
                 self.ball_velocity[0] = -self.ball_velocity[0];
             }
+        }
+
+        if self.score_1 != self.last_score_1 || self.score_2 != self.last_score_2 {
+            self.score_text.set_content(&format!("{} - {}", self.score_1, self.score_2));
+            self.last_score_1 = self.score_1;
+            self.last_score_2 = self.score_2;
         }
     }
 }
