@@ -189,6 +189,8 @@ East Engine is being developed incrementally, with each major system implemented
 * [x] Shared camera GPU uniform buffer
 * [x] Cached font loading
 * [x] Shared text sampler
+* [x] Glyph metric caching for repeated text layout work
+* [x] Glyph metric caching for repeated text layout work
 
 ---
 
