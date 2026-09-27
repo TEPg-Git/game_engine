@@ -67,6 +67,7 @@ pub struct Renderer {
     // RENDER OBJECTS
     pub render_objects: Vec<Option<RenderObject>>,
     pub text_objects: HashMap<u32, TextObject>,
+    last_camera: CameraUniforms,
 }
 
 impl Renderer {
@@ -247,6 +248,7 @@ impl Renderer {
             camera_uniform_buffer,
             render_objects: Vec::with_capacity(16),
             text_objects: HashMap::new(),
+            last_camera: camera_uniforms,
         }
     }
 
@@ -400,11 +402,16 @@ impl Renderer {
             _padding: 0.0,
         };
 
-        self.queue.write_buffer(
-            &self.camera_uniform_buffer,
-            0,
-            bytemuck::bytes_of(&camera_uniforms),
-        );
+        if camera_uniforms.position != self.last_camera.position
+            || camera_uniforms.zoom != self.last_camera.zoom
+        {
+            self.queue.write_buffer(
+                &self.camera_uniform_buffer,
+                0,
+                bytemuck::bytes_of(&camera_uniforms),
+            );
+            self.last_camera = camera_uniforms;
+        }
 
         let output = match self.surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(output) => output,
