@@ -156,6 +156,33 @@ impl Text {
 }
 
 // ============================================================
+// GLYPH METRIC CACHE
+// ============================================================
+
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
+
+fn glyph_metrics(font: &Font, character: char, font_size: f32) -> fontdue::Metrics {
+    static CACHE: OnceLock<Mutex<HashMap<(char, u32), fontdue::Metrics>>> = OnceLock::new();
+
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    let key = (character, font_size.to_bits());
+
+    if let Some(metrics) = cache.lock().expect("Glyph cache poisoned").get(&key).copied() {
+        return metrics;
+    }
+
+    let (metrics, _) = font.rasterize(character, font_size);
+
+    cache
+        .lock()
+        .expect("Glyph cache poisoned")
+        .insert(key, metrics);
+
+    metrics
+}
+
+// ============================================================
 // TEXT LAYOUT HELPERS
 // ============================================================
 
@@ -163,8 +190,7 @@ fn character_width(font: &Font, character: char, font_size: f32) -> usize {
     if character == ' ' {
         (font_size * 0.30).max(1.0) as usize
     } else {
-        let (metrics, _) = font.rasterize(character, font_size);
-        metrics.width
+        glyph_metrics(font, character, font_size).width
     }
 }
 
