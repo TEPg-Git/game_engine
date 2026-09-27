@@ -79,18 +79,13 @@ impl App {
         let player_sprite_size = [0.05, 0.4];
         let ball_sprite_size = [0.2, 0.2];
 
-        let player_sprite_1 = Sprite::from_file(
+        let player_texture = crate::texture::Texture::from_file(
             &renderer.device,
             &renderer.queue,
             "assets/textures/Player.png",
-            player_sprite_size,
         );
-        let player_sprite_2 = Sprite::from_file(
-            &renderer.device,
-            &renderer.queue,
-            "assets/textures/Player.png",
-            player_sprite_size,
-        );
+        let player_sprite_1 = Sprite::with_texture(player_texture.clone(), player_sprite_size);
+        let player_sprite_2 = Sprite::with_texture(player_texture, player_sprite_size);
         let ball_sprite = Sprite::from_file(
             &renderer.device,
             &renderer.queue,
