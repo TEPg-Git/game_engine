@@ -311,14 +311,13 @@ impl Renderer {
             }
 
             self.render_objects[id] = Some(RenderObject {
-                    uniform_buffer,
-                    uniform_bind_group,
-                    sprite_bind_group,
-                    vertex_buffer,
-                    vertex_count,
-                    transform_revision: entity.transform.revision(),
-                },
-            );
+                uniform_buffer,
+                uniform_bind_group,
+                sprite_bind_group,
+                vertex_buffer,
+                vertex_count,
+                transform_revision: entity.transform.revision(),
+            });
         }
     }
 
