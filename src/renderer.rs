@@ -20,6 +20,7 @@ pub struct RenderObject {
     pub sprite_bind_group: wgpu::BindGroup,
     pub vertex_buffer: wgpu::Buffer,
     pub vertex_count: u32,
+    pub transform_revision: u64,
 }
 
 // ============================================================
@@ -311,6 +312,7 @@ impl Renderer {
                     sprite_bind_group,
                     vertex_buffer,
                     vertex_count,
+                    transform_revision: entity.transform.revision(),
                 },
             );
         }
@@ -449,31 +451,35 @@ impl Renderer {
             render_pass.set_pipeline(&self.render_pipeline);
 
             for entity in &state.entities {
-                let Some(render_object) = self.render_objects.get(&entity.id) else {
+                let Some(render_object) = self.render_objects.get_mut(&entity.id) else {
                     continue;
                 };
 
-                let uniforms = Uniforms {
-                    position_rotation: [
-                        entity.transform.position[0],
-                        entity.transform.position[1],
-                        entity.transform.rotation,
-                        0.0,
-                    ],
-                    scale: [
-                        entity.transform.scale[0],
-                        entity.transform.scale[1],
-                        0.0,
-                        0.0,
-                    ],
-                    color: [1.0, 1.0, 1.0, 1.0],
-                };
+                if render_object.transform_revision != entity.transform.revision() {
+                    let uniforms = Uniforms {
+                        position_rotation: [
+                            entity.transform.position[0],
+                            entity.transform.position[1],
+                            entity.transform.rotation,
+                            0.0,
+                        ],
+                        scale: [
+                            entity.transform.scale[0],
+                            entity.transform.scale[1],
+                            0.0,
+                            0.0,
+                        ],
+                        color: [1.0, 1.0, 1.0, 1.0],
+                    };
 
-                self.queue.write_buffer(
-                    &render_object.uniform_buffer,
-                    0,
-                    bytemuck::bytes_of(&uniforms),
-                );
+                    self.queue.write_buffer(
+                        &render_object.uniform_buffer,
+                        0,
+                        bytemuck::bytes_of(&uniforms),
+                    );
+
+                    render_object.transform_revision = entity.transform.revision();
+                }
 
                 render_pass.set_bind_group(0, &render_object.uniform_bind_group, &[]);
                 render_pass.set_bind_group(1, &render_object.sprite_bind_group, &[]);
