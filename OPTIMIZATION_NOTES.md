@@ -12,12 +12,19 @@ The optimization branch preserves the completed Pong behavior while improving en
 - Preallocated Pong entity storage.
 - O(1) entity lookup for the current contiguous ID-based entity storage.
 - Cached glyph metrics for repeated text layout width calculations.
+- Transform revision tracking to avoid redundant per-frame entity uniform uploads.
+- Indexed renderer storage for the current stable entity IDs.
+- Shared GPU texture ownership so sprites can reuse the same loaded texture resource.
 
 ## Next profiling targets
 
 - Measure per-frame CPU time and GPU time.
 - Add allocation/resource counters around text regeneration.
-- Replace per-entity texture ownership with shared asset handles.
-- Move render-object lookup from a hash map to an engine-level indexed resource table once entity IDs become stable engine handles.
-- Add change tracking for transforms and GPU buffer writes.
+- Replace the current path-based texture loading with a centralized asset manager.
+- Add resource lifetime/handle management once entity IDs evolve into stable engine handles.
+- Reduce text GPU resource replacement during dynamic text changes.
 - Investigate batching only after profiling establishes draw-call overhead.
+
+## Validation
+
+Optimization changes should preserve the existing Pong gameplay and should be validated with a release build and runtime test before merging into the stable branch.
