@@ -160,26 +160,40 @@ impl Text {
 // ============================================================
 
 use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 
-fn glyph_metrics(font: &Font, character: char, font_size: f32) -> fontdue::Metrics {
-    static CACHE: OnceLock<Mutex<HashMap<(char, u32), fontdue::Metrics>>> = OnceLock::new();
+#[derive(Clone)]
+struct CachedGlyph {
+    metrics: fontdue::Metrics,
+    bitmap: Arc<Vec<u8>>,
+}
+
+fn cached_glyph(font: &Font, character: char, font_size: f32) -> CachedGlyph {
+    static CACHE: OnceLock<Mutex<HashMap<(char, u32), CachedGlyph>>> = OnceLock::new();
 
     let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
     let key = (character, font_size.to_bits());
 
-    if let Some(metrics) = cache.lock().expect("Glyph cache poisoned").get(&key).copied() {
-        return metrics;
+    if let Some(glyph) = cache.lock().expect("Glyph cache poisoned").get(&key).cloned() {
+        return glyph;
     }
 
-    let (metrics, _) = font.rasterize(character, font_size);
+    let (metrics, bitmap) = font.rasterize(character, font_size);
+    let glyph = CachedGlyph {
+        metrics,
+        bitmap: Arc::new(bitmap),
+    };
 
     cache
         .lock()
         .expect("Glyph cache poisoned")
-        .insert(key, metrics);
+        .insert(key, glyph.clone());
 
-    metrics
+    glyph
+}
+
+fn glyph_metrics(font: &Font, character: char, font_size: f32) -> fontdue::Metrics {
+    cached_glyph(font, character, font_size).metrics
 }
 
 // ============================================================
@@ -326,8 +340,7 @@ pub fn create_text_bitmap_with_options(
         let mut line_height = 1usize;
 
         for character in line.chars() {
-            let (metrics, _) = font.rasterize(character, font_size);
-            line_height = line_height.max(metrics.height);
+            line_height = line_height.max(glyph_metrics(font, character, font_size).height);
         }
 
         max_width_pixels = max_width_pixels.max(width);
@@ -367,7 +380,9 @@ pub fn create_text_bitmap_with_options(
         let character_count = line.chars().count();
 
         for (character_index, character) in line.chars().enumerate() {
-            let (metrics, bitmap) = font.rasterize(character, font_size);
+            let glyph = cached_glyph(font, character, font_size);
+            let metrics = glyph.metrics;
+            let bitmap = &glyph.bitmap;
             let char_width = character_width(font, character, font_size);
 
             if character != ' ' {
