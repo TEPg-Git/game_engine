@@ -25,4 +25,8 @@ impl Sprite {
             size,
         }
     }
+
+    pub fn with_texture(texture: Texture, size: [f32; 2]) -> Self {
+        Self { texture, size }
+    }
 }
