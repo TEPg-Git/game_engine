@@ -50,6 +50,10 @@ pub struct Renderer {
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
 
+    // RENDER DIAGNOSTICS
+    pub draw_calls: u32,
+    pub buffer_writes: u32,
+
     // SHARED GPU LAYOUTS
     pub texture_bind_group_layout: wgpu::BindGroupLayout,
     pub uniform_bind_group_layout: wgpu::BindGroupLayout,
@@ -237,6 +241,8 @@ impl Renderer {
             surface,
             device,
             queue,
+            draw_calls: 0,
+            buffer_writes: 0,
             pending_width: config.width,
             pending_height: config.height,
             resize_pending: false,
@@ -391,6 +397,9 @@ impl Renderer {
             return;
         }
 
+        self.draw_calls = 0;
+        self.buffer_writes = 0;
+
         self.update_text_object(0, &state.text);
         self.update_text_object(1, &state.score_text);
         self.update_text_object(2, fps_text);
@@ -410,6 +419,7 @@ impl Renderer {
                 0,
                 bytemuck::bytes_of(&camera_uniforms),
             );
+            self.buffer_writes += 1;
             self.last_camera = camera_uniforms;
         }
 
@@ -487,6 +497,7 @@ impl Renderer {
                         0,
                         bytemuck::bytes_of(&uniforms),
                     );
+                    self.buffer_writes += 1;
 
                     render_object.transform_revision = entity.transform.revision();
                 }
@@ -495,6 +506,7 @@ impl Renderer {
                 render_pass.set_bind_group(1, &render_object.sprite_bind_group, &[]);
                 render_pass.set_vertex_buffer(0, render_object.vertex_buffer.slice(..));
                 render_pass.draw(0..render_object.vertex_count, 0..1);
+                self.draw_calls += 1;
             }
 
             for text_object in self.text_objects.values() {
@@ -506,6 +518,7 @@ impl Renderer {
                 render_pass.set_bind_group(1, &text_object.text_bind_group, &[]);
                 render_pass.set_vertex_buffer(0, text_object.vertex_buffer.slice(..));
                 render_pass.draw(0..text_object.vertex_count, 0..1);
+                self.draw_calls += 1;
             }
         }
 
