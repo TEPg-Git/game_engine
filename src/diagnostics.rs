@@ -79,15 +79,15 @@ impl Diagnostics {
             .set_content(&format!("Frame: {:.2} ms", self.frame_time_ms));
     }
 
-    pub fn fps(&self) -> f32 {
-        self.fps
-    }
+    //pub fn fps(&self) -> f32 {
+    //    self.fps
+    //}
 
-    pub fn frame_time_ms(&self) -> f32 {
-        self.frame_time_ms
-    }
+    //pub fn frame_time_ms(&self) -> f32 {
+    //    self.frame_time_ms
+    //}
 
-    pub fn fps_changed(&self) -> bool {
-        self.fps_changed
-    }
+    //pub fn fps_changed(&self) -> bool {
+    //    self.fps_changed
+    //}
 }

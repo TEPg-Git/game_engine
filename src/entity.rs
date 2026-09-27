@@ -68,15 +68,15 @@ impl Entity {
     // ROTATE
     // ========================================================
 
-    pub fn rotate(&mut self, radians: f32) {
-        self.transform.rotate(radians);
-    }
+    //pub fn rotate(&mut self, radians: f32) {
+    //    self.transform.rotate(radians);
+    //}
 
     // ========================================================
     // SCALE
     // ========================================================
 
-    pub fn set_scale(&mut self, x: f32, y: f32) {
-        self.transform.set_scale(x, y);
-    }
+    //pub fn set_scale(&mut self, x: f32, y: f32) {
+    //    self.transform.set_scale(x, y);
+    //}
 }
