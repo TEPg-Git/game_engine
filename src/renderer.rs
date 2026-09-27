@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+
 use std::sync::Arc;
 
 use wgpu::util::DeviceExt;
@@ -64,7 +65,7 @@ pub struct Renderer {
     resize_pending: bool,
 
     // RENDER OBJECTS
-    pub render_objects: HashMap<u32, RenderObject>,
+    pub render_objects: Vec<Option<RenderObject>>,
     pub text_objects: HashMap<u32, TextObject>,
 }
 
@@ -244,7 +245,7 @@ impl Renderer {
             render_pipeline,
             text_sampler,
             camera_uniform_buffer,
-            render_objects: HashMap::new(),
+            render_objects: Vec::with_capacity(16),
             text_objects: HashMap::new(),
         }
     }
@@ -304,9 +305,12 @@ impl Renderer {
             let sprite_bind_group = self.create_sprite_bind_group(sprite);
             let (vertex_buffer, vertex_count) = self.create_sprite_vertex_buffer(sprite);
 
-            self.render_objects.insert(
-                entity.id,
-                RenderObject {
+            let id = entity.id as usize;
+            if self.render_objects.len() <= id {
+                self.render_objects.resize_with(id + 1, || None);
+            }
+
+            self.render_objects[id] = Some(RenderObject {
                     uniform_buffer,
                     uniform_bind_group,
                     sprite_bind_group,
@@ -451,7 +455,7 @@ impl Renderer {
             render_pass.set_pipeline(&self.render_pipeline);
 
             for entity in &state.entities {
-                let Some(render_object) = self.render_objects.get_mut(&entity.id) else {
+                let Some(render_object) = self.render_objects.get_mut(entity.id as usize).and_then(Option::as_mut) else {
                     continue;
                 };
 
