@@ -194,22 +194,20 @@ impl ApplicationHandler for App {
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        if self.resizing {
-            if let Some(last_resize) = self.last_resize {
-                if last_resize.elapsed() >= Duration::from_millis(100) {
-                    self.resizing = false;
-                    self.last_resize = None;
+        if self.resizing
+            && let Some(last_resize) = self.last_resize
+            && last_resize.elapsed() >= Duration::from_millis(100)
+        {
+            self.resizing = false;
+            self.last_resize = None;
 
-                    if let Some(renderer) = &mut self.renderer {
-                        renderer.apply_pending_resize();
-                    }
+            if let Some(renderer) = &mut self.renderer {
+                renderer.apply_pending_resize();
+            }
+            self.time.reset();
 
-                    self.time.reset();
-
-                    if let Some(window) = &self.window {
-                        window.request_redraw();
-                    }
-                }
+            if let Some(window) = &self.window {
+                window.request_redraw();
             }
         }
     }

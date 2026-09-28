@@ -25,12 +25,18 @@ pub struct GameState {
 impl GameState {
     pub fn new() -> Self {
         let mut game_state = Self {
-            score_1: 0, score_2: 0, max_score: 5,
+            score_1: 0,
+            score_2: 0,
+            max_score: 5,
             keyboard: KeyboardState::default(),
             entities: Vec::with_capacity(3),
-            player1_id: 0, player2_id: 0, ball_id: 0,
+            player1_id: 0,
+            player2_id: 0,
+            ball_id: 0,
             ball_velocity: [-0.4, -0.5],
-            camera: Camera::new(), speed: 1.0, next_entity_id: 0,
+            camera: Camera::new(),
+            speed: 1.0,
+            next_entity_id: 0,
             text: {
                 let mut text = Text::new("EAST ENGINE PONG GAME", 24.0);
                 text.set_position(0.0, 0.9);
@@ -73,11 +79,15 @@ impl GameState {
     }
 
     pub fn get_entity(&self, id: u32) -> Option<&Entity> {
-        self.entities.get(id as usize).filter(|entity| entity.id == id)
+        self.entities
+            .get(id as usize)
+            .filter(|entity| entity.id == id)
     }
 
     pub fn get_entity_mut(&mut self, id: u32) -> Option<&mut Entity> {
-        self.entities.get_mut(id as usize).filter(|entity| entity.id == id)
+        self.entities
+            .get_mut(id as usize)
+            .filter(|entity| entity.id == id)
     }
 
     pub fn update(&mut self, delta_time: f32) {
@@ -85,16 +95,24 @@ impl GameState {
         let key_w = self.keyboard.w;
         let key_s = self.keyboard.s;
         if let Some(player_1) = self.get_entity_mut(self.player1_id) {
-            if key_w { player_1.translate(0.0, speed * delta_time); }
-            if key_s { player_1.translate(0.0, -speed * delta_time); }
+            if key_w {
+                player_1.translate(0.0, speed * delta_time);
+            }
+            if key_s {
+                player_1.translate(0.0, -speed * delta_time);
+            }
             player_1.transform.position[1] = player_1.transform.position[1].clamp(-0.75, 0.75);
         }
 
         let key_up = self.keyboard.up;
         let key_down = self.keyboard.down;
         if let Some(player_2) = self.get_entity_mut(self.player2_id) {
-            if key_up { player_2.translate(0.0, speed * delta_time); }
-            if key_down { player_2.translate(0.0, -speed * delta_time); }
+            if key_up {
+                player_2.translate(0.0, speed * delta_time);
+            }
+            if key_down {
+                player_2.translate(0.0, -speed * delta_time);
+            }
             player_2.transform.position[1] = player_2.transform.position[1].clamp(-0.75, 0.75);
         }
 
@@ -121,27 +139,36 @@ impl GameState {
                 bounced = true;
             }
         }
-        if bounced { self.ball_velocity[1] = -self.ball_velocity[1]; }
-
-        if let Some(ball) = self.get_entity_mut(ball_id) {
-            if ball.transform.position[0] - ball_half_width > 1.0 {
-                ball.transform.position = [0.0, 0.0];
-                self.ball_velocity[0] = -self.ball_velocity[0];
-                self.score_2 += 1;
-            }
+        if bounced {
+            self.ball_velocity[1] = -self.ball_velocity[1];
         }
-        if let Some(ball) = self.get_entity_mut(ball_id) {
-            if ball.transform.position[0] + ball_half_width < -1.0 {
-                ball.transform.position = [0.0, 0.0];
-                self.ball_velocity[0] = -self.ball_velocity[0];
-                self.score_1 += 1;
-            }
+
+        if let Some(ball) = self.get_entity_mut(ball_id)
+            && ball.transform.position[0] - ball_half_width > 1.0
+        {
+            ball.transform.position = [0.0, 0.0];
+            self.ball_velocity[0] = -self.ball_velocity[0];
+            self.score_2 += 1;
+        }
+
+        if let Some(ball) = self.get_entity_mut(ball_id)
+            && ball.transform.position[0] + ball_half_width < -1.0
+        {
+            ball.transform.position = [0.0, 0.0];
+            self.ball_velocity[0] = -self.ball_velocity[0];
+            self.score_1 += 1;
         }
 
         let (player_2_y, player_2_half_width, player_2_half_height) = {
-            let player_2 = self.get_entity(self.player2_id).expect("Player 2 entity missing");
+            let player_2 = self
+                .get_entity(self.player2_id)
+                .expect("Player 2 entity missing");
             let sprite = player_2.sprite.as_ref().expect("Player 2 sprite missing");
-            (player_2.transform.position[1], sprite.size[0] * 0.5, sprite.size[1] * 0.5)
+            (
+                player_2.transform.position[1],
+                sprite.size[0] * 0.5,
+                sprite.size[1] * 0.5,
+            )
         };
         let ball_velocity_x = self.ball_velocity[0];
         if let Some(ball) = self.get_entity_mut(ball_id) {
@@ -158,9 +185,15 @@ impl GameState {
         }
 
         let (player_1_y, player_1_half_width, player_1_half_height) = {
-            let player_1 = self.get_entity(self.player1_id).expect("Player 1 entity missing");
+            let player_1 = self
+                .get_entity(self.player1_id)
+                .expect("Player 1 entity missing");
             let sprite = player_1.sprite.as_ref().expect("Player 1 sprite missing");
-            (player_1.transform.position[1], sprite.size[0] * 0.5, sprite.size[1] * 0.5)
+            (
+                player_1.transform.position[1],
+                sprite.size[0] * 0.5,
+                sprite.size[1] * 0.5,
+            )
         };
         let ball_velocity_x = self.ball_velocity[0];
         if let Some(ball) = self.get_entity_mut(ball_id) {
@@ -177,7 +210,8 @@ impl GameState {
         }
 
         if self.score_1 != self.last_score_1 || self.score_2 != self.last_score_2 {
-            self.score_text.set_content(&format!("{} - {}", self.score_1, self.score_2));
+            self.score_text
+                .set_content(&format!("{} - {}", self.score_1, self.score_2));
             self.last_score_1 = self.score_1;
             self.last_score_2 = self.score_2;
         }

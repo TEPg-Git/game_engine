@@ -5,15 +5,13 @@ use std::sync::OnceLock;
 // FONT
 // ============================================================
 
-const FONT_DATA: &[u8] =
-    include_bytes!("../assets/fonts/Roboto-VariableFont_wdth,wght.ttf");
+const FONT_DATA: &[u8] = include_bytes!("../assets/fonts/Roboto-VariableFont_wdth,wght.ttf");
 
 pub fn load_font() -> &'static Font {
     static FONT: OnceLock<Font> = OnceLock::new();
 
     FONT.get_or_init(|| {
-        Font::from_bytes(FONT_DATA, fontdue::FontSettings::default())
-            .expect("Failed to load font")
+        Font::from_bytes(FONT_DATA, fontdue::FontSettings::default()).expect("Failed to load font")
     })
 }
 
@@ -142,7 +140,7 @@ impl Text {
         let font = load_font();
 
         let (_, width, height) = create_text_bitmap_with_options(
-            &font,
+            font,
             &self.content,
             self.font_size,
             self.line_spacing,
@@ -160,7 +158,7 @@ impl Text {
 // ============================================================
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 struct CachedGlyph {
@@ -174,7 +172,12 @@ fn cached_glyph(font: &Font, character: char, font_size: f32) -> CachedGlyph {
     let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
     let key = (character, font_size.to_bits());
 
-    if let Some(glyph) = cache.lock().expect("Glyph cache poisoned").get(&key).cloned() {
+    if let Some(glyph) = cache
+        .lock()
+        .expect("Glyph cache poisoned")
+        .get(&key)
+        .cloned()
+    {
         return glyph;
     }
 
@@ -275,20 +278,8 @@ fn wrap_line(
 // TEXT BITMAP
 // ============================================================
 
-pub fn create_text_bitmap(
-    font: &Font,
-    text: &str,
-    font_size: f32,
-) -> (Vec<u8>, u32, u32) {
-    create_text_bitmap_with_options(
-        font,
-        text,
-        font_size,
-        1.0,
-        0.0,
-        None,
-        TextAlignment::Left,
-    )
+pub fn create_text_bitmap(font: &Font, text: &str, font_size: f32) -> (Vec<u8>, u32, u32) {
+    create_text_bitmap_with_options(font, text, font_size, 1.0, 0.0, None, TextAlignment::Left)
 }
 
 // ============================================================
@@ -348,14 +339,12 @@ pub fn create_text_bitmap_with_options(
         line_widths.push(width);
     }
 
-    let line_step =
-        (max_line_height as f32 * line_spacing.max(0.0)).max(max_line_height as f32);
+    let line_step = (max_line_height as f32 * line_spacing.max(0.0)).max(max_line_height as f32);
 
     let total_height = if lines.len() == 1 {
         max_line_height
     } else {
-        (max_line_height as f32 + line_step * (lines.len() - 1) as f32)
-            .ceil() as usize
+        (max_line_height as f32 + line_step * (lines.len() - 1) as f32).ceil() as usize
     }
     .max(1);
 
@@ -422,9 +411,5 @@ pub fn create_text_bitmap_with_options(
         }
     }
 
-    (
-        rgba_data,
-        max_width_pixels as u32,
-        total_height as u32,
-    )
+    (rgba_data, max_width_pixels as u32, total_height as u32)
 }
