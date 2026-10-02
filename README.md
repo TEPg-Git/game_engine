@@ -11,7 +11,7 @@ The project focuses on understanding how rendering engines work internally — f
 
 > 🚧 **Status: Early Development — 2D Engine Development**
 >
-> The Pong prototype has been completed and released as a standalone Windows build. Current work is focused on engine optimization and cleanup.
+> The Pong prototype has been completed and released as a standalone Windows build. Optimization and cleanup work for the engine foundation has been completed for the current stage. The October development focus is now the **Particle Flow Field visualization demo**.
 
 ---
 
@@ -30,11 +30,12 @@ This allows each system to be implemented and understood individually, from low-
 
 The current priority is to complete the **2D engine foundation** before beginning 3D rendering.
 
-The repository now uses the following branch workflow:
+The repository uses the following branch workflow:
 
-* `main` — stable completed Pong milestone
+* `master` — stable completed Pong milestone
 * `pong-game` — Pong development history
-* `optimizations` — current engine optimization and cleanup work
+* `optimizations` — engine optimization and cleanup work
+* `visualization-demo` — October Particle Flow Field visualization development
 
 ---
 
@@ -190,7 +191,6 @@ East Engine is being developed incrementally, with each major system implemented
 * [x] Cached font loading
 * [x] Shared text sampler
 * [x] Glyph metric caching for repeated text layout work
-* [x] Glyph metric caching for repeated text layout work
 
 ---
 
@@ -267,6 +267,68 @@ The current entity system is intentionally simple and will be expanded as more e
 
 ---
 
+# 🌊 October Visualization Demo
+
+The main development goal for **October 2026** is to build and release a real-time **Particle Flow Field** visualization.
+
+The demo will use particles moving through a procedurally generated vector field. The project is intended to demonstrate East Engine's ability to support continuous simulations and large numbers of moving visual elements.
+
+### Core Demo Goals
+
+* [ ] Particle data structure
+* [ ] Particle spawning
+* [ ] Particle position and velocity
+* [ ] Delta-time based movement
+* [ ] Boundary handling
+* [ ] Flow-field generation
+* [ ] Particle movement through the flow field
+* [ ] Particle lifetime and respawning
+* [ ] Visual variation between particles
+* [ ] Configurable simulation parameters
+* [ ] User interaction
+* [ ] Particle trails
+* [ ] Performance measurement
+* [ ] Final visual polish
+* [ ] Standalone release build
+* [ ] Documentation and screenshots
+* [ ] Release by October 31, 2026
+
+### Planned Development Phases
+
+**October 1–4 — Foundation**
+
+Build the initial particle representation, spawning, movement, delta-time integration, and screen boundaries.
+
+**October 5–11 — Flow Field**
+
+Implement the vector-field representation and make particles follow the field.
+
+**October 12–18 — Visual System**
+
+Add particle lifetime, respawning, visual variation, color changes, and trails.
+
+**October 19–24 — Interaction**
+
+Add user controls and interactive parameters for changing the visualization while it is running.
+
+**October 25–27 — Stability and Performance**
+
+Clean up the implementation, measure frame time and rendering performance, and address issues revealed by the demo.
+
+**October 28–29 — Release Polish**
+
+Finalize presentation, controls, README documentation, screenshots, and demo media.
+
+**October 30 — Packaging**
+
+Create and test the standalone release build.
+
+**October 31 — Release**
+
+Publish the Particle Flow Field visualization demo.
+
+---
+
 # 🗺️ 2D Engine Roadmap
 
 The goal is to complete the following 2D systems before beginning 3D rendering.
@@ -293,29 +355,18 @@ The goal is to complete the following 2D systems before beginning 3D rendering.
 
 ## Optimization Work
 
-Current optimization work is focused on improving the engine without changing gameplay behavior.
+Optimization and cleanup work for the current engine stage has been completed.
 
-Completed optimizations include:
+The following work has been implemented:
 
 * [x] Cache the parsed font so it is loaded only once
 * [x] Reuse a shared text sampler instead of creating one for each text resource
 * [x] Move camera data into a shared GPU uniform buffer
 * [x] Update camera GPU data once per frame
-* [x] Reduce per-object uniform data to entity-specific values
+* [x] Reduce unnecessary work during text updates through revision tracking
 * [x] Protect game delta time from long resize pauses
 
-Upcoming optimization goals include:
-
-* [ ] Renderer cleanup and warning reduction
-* [ ] Add frame-time and rendering diagnostics
-* [ ] Asset/resource manager
-* [ ] Shared asset and texture caching
-* [ ] Improve GPU resource ownership and lifetime management
-* [ ] Reduce unnecessary per-frame GPU buffer updates
-* [ ] Improve entity/render-object lookup and update efficiency
-* [ ] Investigate render batching and reduce draw-call overhead
-* [ ] Profile CPU and GPU performance before and after major changes
-* [ ] Validate optimizations without changing Pong gameplay behavior
+Further optimization work will be driven by the needs of the visualization demo rather than treated as a separate project phase.
 
 ---
 
@@ -380,6 +431,8 @@ Upcoming optimization goals include:
 * [ ] Particle color
 * [ ] Particle effects
 
+The October Particle Flow Field demo is expected to become the first practical implementation of these particle concepts.
+
 ---
 
 ## Post Processing
@@ -397,9 +450,7 @@ Upcoming optimization goals include:
 
 A small playable 2D game will be created using East Engine once the core 2D systems are sufficiently complete.
 
-The demo will be used to validate the engine outside of isolated rendering tests.
-
-The Pong game is currently being used to validate the engine's core systems outside of isolated rendering tests.
+The Pong game was used to validate the engine's core systems outside of isolated rendering tests.
 
 ### Current Pong Implementation
 
@@ -480,3 +531,4 @@ src/
 ├── sprite.rs
 ├── transform.rs
 └── shader.wgsl
+```
