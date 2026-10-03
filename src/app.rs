@@ -75,45 +75,12 @@ impl App {
     }
 
     fn initialize_scene(&mut self, renderer: &mut Renderer) {
-        let player_sprite_size = [0.05, 0.4];
-        let ball_sprite_size = [0.2, 0.2];
-
-        let player_texture = crate::texture::Texture::from_file(
-            &renderer.device,
-            &renderer.queue,
-            "assets/textures/Player.png",
-        );
-        let player_sprite_1 = crate::sprite::Sprite::with_texture(player_texture.clone(), player_sprite_size);
-        let player_sprite_2 = crate::sprite::Sprite::with_texture(player_texture, player_sprite_size);
-        let ball_sprite = crate::sprite::Sprite::from_file(
-            &renderer.device,
-            &renderer.queue,
-            "assets/textures/Ball.png",
-            ball_sprite_size,
-        );
-
-        let player1_id = self.game_state.player1_id;
-        let player2_id = self.game_state.player2_id;
-        let ball_id = self.game_state.ball_id;
-
-        if let Some(entity) = self.game_state.get_entity_mut(player1_id) {
-            entity.set_sprite(player_sprite_1);
-        }
-        if let Some(entity) = self.game_state.get_entity_mut(player2_id) {
-            entity.set_sprite(player_sprite_2);
-        }
-        if let Some(entity) = self.game_state.get_entity_mut(ball_id) {
-            entity.set_sprite(ball_sprite);
-        }
-
         for entity in &self.game_state.entities {
             renderer.create_render_object(entity);
         }
 
-        renderer.create_text_object(0, self.game_state.text.clone());
-        renderer.create_text_object(1, self.game_state.score_text.clone());
-        renderer.create_text_object(2, self.diagnostics.fps_text.clone());
-        renderer.create_text_object(3, self.diagnostics.frame_time_ms_text.clone());
+        renderer.create_text_object(0, self.diagnostics.fps_text.clone());
+        renderer.create_text_object(1, self.diagnostics.frame_time_ms_text.clone());
     }
 }
 
@@ -170,8 +137,6 @@ impl ApplicationHandler for App {
 
                     if key_code == KeyCode::KeyF && pressed && !event.repeat {
                         self.toggle_fullscreen();
-                    } else {
-                        self.game_state.keyboard.handle_keyboard(key_code, pressed);
                     }
                 }
             }
@@ -203,6 +168,7 @@ impl ApplicationHandler for App {
             if let Some(renderer) = &mut self.renderer {
                 renderer.apply_pending_resize();
             }
+
             self.time.reset();
 
             if let Some(window) = &self.window {
