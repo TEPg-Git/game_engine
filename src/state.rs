@@ -8,7 +8,6 @@ pub struct GameState {
     pub particle: Particle,
     pub score_1: u32,
     pub score_2: u32,
-    pub max_score: u32,
     pub keyboard: KeyboardState,
     pub entities: Vec<Entity>,
     pub player1_id: u32,
@@ -27,10 +26,9 @@ pub struct GameState {
 impl GameState {
     pub fn new() -> Self {
         let mut game_state = Self {
-            particle: Particle::new([0.0, 0.0], [1.0, 0.5], 10.0),
+            particle: Particle::new([0.0, 0.0], [1.0, 0.5], 1.0),
             score_1: 0,
             score_2: 0,
-            max_score: 5,
             keyboard: KeyboardState::default(),
             entities: Vec::with_capacity(3),
             player1_id: 0,

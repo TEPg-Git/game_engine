@@ -59,10 +59,15 @@ impl App {
         self.time.update();
         self.diagnostics.update(&self.time);
         self.game_state.update(self.time.delta_time());
-        println!(
-            "Particle position {} {}",
-            self.game_state.particle.position[0], self.game_state.particle.position[1]
-        );
+        if self.game_state.particle.is_alive() {
+            println!(
+                "Particle position {} {}  Lifetime {} delta_time {}",
+                self.game_state.particle.position[0],
+                self.game_state.particle.position[1],
+                self.game_state.particle.lifetime,
+                self.time.delta_time()
+            );
+        }
     }
 
     fn render(&mut self) {

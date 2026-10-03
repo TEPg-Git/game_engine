@@ -14,6 +14,9 @@ impl Particle {
     }
 
     pub fn update(&mut self, dt: f32) {
+        if self.lifetime <= 0.0 {
+            return;
+        }
         self.position[0] += self.velocity[0] * dt;
         self.position[1] += self.velocity[1] * dt;
         self.lifetime -= dt;
