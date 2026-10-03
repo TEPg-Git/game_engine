@@ -38,22 +38,8 @@ impl GameState {
             camera: Camera::new(),
             speed: 1.0,
             next_entity_id: 0,
-            text: {
-                let mut text = Text::new("EAST ENGINE PONG GAME", 24.0);
-                text.set_position(0.0, 0.9);
-                text.set_alignment(TextAlignment::Center);
-                text.set_line_spacing(1.2);
-                text.set_letter_spacing(0.5);
-                text
-            },
-            score_text: {
-                let mut text = Text::new("0 - 0", 24.0);
-                text.set_position(0.0, 0.8);
-                text.set_alignment(TextAlignment::Center);
-                text.set_line_spacing(1.2);
-                text.set_letter_spacing(0.5);
-                text
-            },
+            text: Text::new("", 24.0),
+            score_text: Text::new("", 24.0),
             last_score_1: 0,
             last_score_2: 0,
         };
@@ -93,6 +79,7 @@ impl GameState {
 
     pub fn update(&mut self, delta_time: f32) {
         self.particle.update(delta_time);
+
         let speed = self.speed;
         let key_w = self.keyboard.w;
         let key_s = self.keyboard.s;
