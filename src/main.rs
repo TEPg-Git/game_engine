@@ -4,6 +4,7 @@ mod diagnostics;
 mod entity;
 mod graphics;
 mod input;
+mod particle;
 mod renderer;
 mod sprite;
 mod state;

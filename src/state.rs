@@ -1,9 +1,11 @@
 use crate::camera::Camera;
 use crate::entity::Entity;
 use crate::input::KeyboardState;
+use crate::particle::Particle;
 use crate::text::{Text, TextAlignment};
 
 pub struct GameState {
+    pub particle: Particle,
     pub score_1: u32,
     pub score_2: u32,
     pub max_score: u32,
@@ -25,6 +27,7 @@ pub struct GameState {
 impl GameState {
     pub fn new() -> Self {
         let mut game_state = Self {
+            particle: Particle::new([0.0, 0.0], [1.0, 0.5], 10.0),
             score_1: 0,
             score_2: 0,
             max_score: 5,
@@ -91,6 +94,7 @@ impl GameState {
     }
 
     pub fn update(&mut self, delta_time: f32) {
+        self.particle.update(delta_time);
         let speed = self.speed;
         let key_w = self.keyboard.w;
         let key_s = self.keyboard.s;
