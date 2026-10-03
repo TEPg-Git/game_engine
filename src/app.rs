@@ -1,6 +1,5 @@
 use crate::diagnostics::Diagnostics;
 use crate::renderer::Renderer;
-use crate::sprite::Sprite;
 use crate::state::GameState;
 use crate::time::Time;
 
@@ -9,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use winit::{
     application::ApplicationHandler,
-    event::{ElementState, WindowEvent},
+    event::WindowEvent,
     event_loop::ActiveEventLoop,
     keyboard::{KeyCode, PhysicalKey},
     window::{Fullscreen, Window, WindowId},
@@ -59,15 +58,6 @@ impl App {
         self.time.update();
         self.diagnostics.update(&self.time);
         self.game_state.update(self.time.delta_time());
-        if self.game_state.particle.is_alive() {
-            println!(
-                "Particle position {} {}  Lifetime {} delta_time {}",
-                self.game_state.particle.position[0],
-                self.game_state.particle.position[1],
-                self.game_state.particle.lifetime,
-                self.time.delta_time()
-            );
-        }
     }
 
     fn render(&mut self) {
@@ -93,9 +83,9 @@ impl App {
             &renderer.queue,
             "assets/textures/Player.png",
         );
-        let player_sprite_1 = Sprite::with_texture(player_texture.clone(), player_sprite_size);
-        let player_sprite_2 = Sprite::with_texture(player_texture, player_sprite_size);
-        let ball_sprite = Sprite::from_file(
+        let player_sprite_1 = crate::sprite::Sprite::with_texture(player_texture.clone(), player_sprite_size);
+        let player_sprite_2 = crate::sprite::Sprite::with_texture(player_texture, player_sprite_size);
+        let ball_sprite = crate::sprite::Sprite::from_file(
             &renderer.device,
             &renderer.queue,
             "assets/textures/Ball.png",
@@ -170,7 +160,7 @@ impl ApplicationHandler for App {
             }
 
             WindowEvent::KeyboardInput { event, .. } => {
-                let pressed = event.state == ElementState::Pressed;
+                let pressed = event.state == winit::event::ElementState::Pressed;
 
                 if let PhysicalKey::Code(key_code) = event.physical_key {
                     if key_code == KeyCode::Escape && pressed {
