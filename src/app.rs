@@ -1,5 +1,7 @@
 use crate::diagnostics::Diagnostics;
+use crate::entity::Entity;
 use crate::renderer::Renderer;
+use crate::sprite::Sprite;
 use crate::state::GameState;
 use crate::time::Time;
 
@@ -75,6 +77,19 @@ impl App {
     }
 
     fn initialize_scene(&mut self, renderer: &mut Renderer) {
+        if self.game_state.entities.is_empty() {
+            let mut particle_entity = Entity::new(0, "Particle");
+            let particle_sprite =
+                Sprite::from_file(&renderer.device, &renderer.queue, "assets/textures/Ball.png", [0.05, 0.05]);
+
+            particle_entity.set_sprite(particle_sprite);
+            particle_entity
+                .transform
+                .set_position(self.game_state.particle.position[0], self.game_state.particle.position[1]);
+
+            self.game_state.entities.push(particle_entity);
+        }
+
         for entity in &self.game_state.entities {
             renderer.create_render_object(entity);
         }
