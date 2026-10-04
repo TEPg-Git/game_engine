@@ -26,6 +26,11 @@ impl Transform {
         self.revision = self.revision.wrapping_add(1);
     }
 
+    pub fn set_position(&mut self, x: f32, y: f32) {
+        self.position = [x, y];
+        self.revision = self.revision.wrapping_add(1);
+    }
+
     pub fn rotate(&mut self, radians: f32) {
         self.rotation += radians;
         self.revision = self.revision.wrapping_add(1);
