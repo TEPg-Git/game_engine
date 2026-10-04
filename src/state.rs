@@ -24,5 +24,11 @@ impl GameState {
 
     pub fn update(&mut self, delta_time: f32) {
         self.particle.update(delta_time);
+
+        if let Some(entity) = self.entities.get_mut(0) {
+            entity
+                .transform
+                .set_position(self.particle.position[0], self.particle.position[1]);
+        }
     }
 }
