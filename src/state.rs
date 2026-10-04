@@ -1,6 +1,6 @@
 use crate::camera::Camera;
 use crate::entity::Entity;
-use crate::particle::Particle;
+use crate::particle::ParticleSystem;
 use crate::text::Text;
 
 pub struct GameState {
@@ -8,7 +8,7 @@ pub struct GameState {
     pub entities: Vec<Entity>,
     pub text: Text,
     pub score_text: Text,
-    pub particle: Particle,
+    pub particle_system: ParticleSystem,
 }
 
 impl GameState {
@@ -18,17 +18,22 @@ impl GameState {
             entities: Vec::new(),
             text: Text::new("", 16.0),
             score_text: Text::new("", 16.0),
-            particle: Particle::new([0.0, 0.0], [1.0, 0.5], 1.0),
+            particle_system: ParticleSystem::new(),
         }
     }
 
     pub fn update(&mut self, delta_time: f32) {
-        self.particle.update(delta_time);
+        self.particle_system.update(delta_time);
 
-        if let Some(entity) = self.entities.get_mut(0) {
+        for (particle, entity) in self
+            .particle_system
+            .particles
+            .iter()
+            .zip(self.entities.iter_mut())
+        {
             entity
                 .transform
-                .set_position(self.particle.position[0], self.particle.position[1]);
+                .set_position(particle.position[0], particle.position[1]);
         }
     }
 }
