@@ -29,3 +29,27 @@ impl Particle {
         self.lifetime > 0.0
     }
 }
+
+pub struct ParticleSystem {
+    pub particles: Vec<Particle>,
+}
+
+impl ParticleSystem {
+    pub fn new() -> Self {
+        Self {
+            particles: vec![
+                Particle::new([0.0, 0.0], [1.0, 0.5], 10.0),
+                Particle::new([0.0, 0.1], [0.8, 0.3], 10.0),
+                Particle::new([0.0, -0.1], [1.2, -0.2], 10.0),
+                Particle::new([-0.2, 0.0], [0.5, 0.8], 10.0),
+                Particle::new([0.2, 0.0], [-0.5, 0.6], 10.0),
+            ],
+        }
+    }
+
+    pub fn update(&mut self, dt: f32) {
+        for particle in &mut self.particles {
+            particle.update(dt);
+        }
+    }
+}
