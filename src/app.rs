@@ -80,13 +80,12 @@ impl App {
         if self.game_state.entities.is_empty() {
             for (index, particle) in self.game_state.particle_system.particles.iter().enumerate() {
                 let mut particle_entity = Entity::new(index as u32, &format!("Particle {index}"));
-                let particle_sprite =
-                    Sprite::from_file(
-                        &renderer.device,
-                        &renderer.queue,
-                        "assets/textures/Ball.png",
-                        [0.05, 0.05],
-                    );
+                let particle_sprite = Sprite::from_file(
+                    &renderer.device,
+                    &renderer.queue,
+                    "assets/textures/Ball.png",
+                    [0.01, 0.01],
+                );
 
                 particle_entity.set_sprite(particle_sprite);
                 particle_entity

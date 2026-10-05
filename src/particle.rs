@@ -33,8 +33,8 @@ impl Particle {
 
     pub fn reset(&mut self) {
         let mut rng = rand::thread_rng();
-        self.position = [0.0, 0.0];
-        self.velocity = [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)];
+        self.position = [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)];
+        self.velocity = [rng.gen_range(-1.5..=1.5), rng.gen_range(-1.5..=1.5)];
         self.lifetime = rng.gen_range(1.0..=10.0);
     }
 }
@@ -46,14 +46,14 @@ pub struct ParticleSystem {
 impl ParticleSystem {
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
-        let n = 200;
+        let n = 500;
         Self {
             particles: (0..n)
                 .map(|_| {
                     Particle::new(
                         [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
-                        [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
-                        rng.gen_range(1.0..=10.0),
+                        [rng.gen_range(-1.5..=1.5), rng.gen_range(-1.5..=1.5)],
+                        rng.gen_range(2.0..=10.0),
                     )
                 })
                 .collect(),
