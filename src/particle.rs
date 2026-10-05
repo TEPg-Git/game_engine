@@ -30,6 +30,13 @@ impl Particle {
     pub fn is_alive(&self) -> bool {
         self.lifetime > 0.0
     }
+
+    pub fn reset(&mut self) {
+        let mut rng = rand::thread_rng();
+        self.position = [0.0, 0.0];
+        self.velocity = [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)];
+        self.lifetime = rng.gen_range(1.0..=10.0);
+    }
 }
 
 pub struct ParticleSystem {
@@ -39,40 +46,32 @@ pub struct ParticleSystem {
 impl ParticleSystem {
     pub fn new() -> Self {
         let mut rng = rand::thread_rng();
+        let n = 200;
         Self {
-            particles: vec![
-                Particle::new(
-                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
-                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
-                    rng.gen_range(1.0..=10.0),
-                ),
-                Particle::new(
-                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
-                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
-                    rng.gen_range(1.0..=10.0),
-                ),
-                Particle::new(
-                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
-                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
-                    rng.gen_range(1.0..=10.0),
-                ),
-                Particle::new(
-                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
-                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
-                    rng.gen_range(1.0..=10.0),
-                ),
-                Particle::new(
-                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
-                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
-                    rng.gen_range(1.0..=10.0),
-                ),
-            ],
+            particles: (0..n)
+                .map(|_| {
+                    Particle::new(
+                        [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
+                        [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
+                        rng.gen_range(1.0..=10.0),
+                    )
+                })
+                .collect(),
         }
     }
 
     pub fn update(&mut self, dt: f32) {
         for particle in &mut self.particles {
             particle.update(dt);
+            if !particle.is_alive() {
+                particle.reset();
+            }
+            if particle.position[0] < -1.0 || particle.position[0] > 1.0 {
+                particle.reset();
+            }
+            if particle.position[1] < -1.0 || particle.position[1] > 1.0 {
+                particle.reset();
+            }
         }
     }
 }
