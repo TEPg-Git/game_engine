@@ -1,3 +1,5 @@
+use rand::Rng;
+
 pub struct Particle {
     pub position: [f32; 2],
     pub velocity: [f32; 2],
@@ -36,13 +38,34 @@ pub struct ParticleSystem {
 
 impl ParticleSystem {
     pub fn new() -> Self {
+        let mut rng = rand::thread_rng();
         Self {
             particles: vec![
-                Particle::new([0.0, 0.0], [1.0, 0.5], 10.0),
-                Particle::new([0.0, 0.1], [0.8, 0.3], 10.0),
-                Particle::new([0.0, -0.1], [1.2, -0.2], 10.0),
-                Particle::new([-0.2, 0.0], [0.5, 0.8], 10.0),
-                Particle::new([0.2, 0.0], [-0.5, 0.6], 10.0),
+                Particle::new(
+                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
+                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
+                    rng.gen_range(1.0..=10.0),
+                ),
+                Particle::new(
+                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
+                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
+                    rng.gen_range(1.0..=10.0),
+                ),
+                Particle::new(
+                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
+                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
+                    rng.gen_range(1.0..=10.0),
+                ),
+                Particle::new(
+                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
+                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
+                    rng.gen_range(1.0..=10.0),
+                ),
+                Particle::new(
+                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
+                    [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
+                    rng.gen_range(1.0..=10.0),
+                ),
             ],
         }
     }
