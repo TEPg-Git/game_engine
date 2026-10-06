@@ -43,7 +43,8 @@ impl FlowField {
                 let angle = (sx.sin() * sy.cos()
                     + (sx * 0.5).cos() * (sy * 0.75).sin()) * TAU;
 
-                self.vectors[self.index(x, y)] = [angle.cos(), angle.sin()];
+                let index = self.index(x, y);
+                self.vectors[index] = [angle.cos(), angle.sin()];
             }
         }
     }
