@@ -275,14 +275,14 @@ The demo will use particles moving through a procedurally generated vector field
 
 ### Core Demo Goals
 
-* [ ] Particle data structure
-* [ ] Particle spawning
-* [ ] Particle position and velocity
-* [ ] Delta-time based movement
-* [ ] Boundary handling
+* [x] Particle data structure
+* [x] Particle spawning
+* [x] Particle position and velocity
+* [x] Delta-time based movement
+* [x] Boundary handling
 * [ ] Flow-field generation
 * [ ] Particle movement through the flow field
-* [ ] Particle lifetime and respawning
+* [x] Particle lifetime and respawning
 * [ ] Visual variation between particles
 * [ ] Configurable simulation parameters
 * [ ] User interaction
