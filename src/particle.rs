@@ -53,18 +53,18 @@ impl Particle {
     }
 
     pub fn reset(&mut self) {
-        let max_speed = 2.0;
+        let max_speed = 0.0;
         let max_range = 1.0;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         self.position = [
-            rng.gen_range(-max_range..=max_range),
-            rng.gen_range(-max_range..=max_range),
+            rng.random_range(-max_range..=max_range),
+            rng.random_range(-max_range..=max_range),
         ];
         self.velocity = [
-            rng.gen_range(-max_speed..=max_speed),
-            rng.gen_range(-max_speed..=max_speed),
+            rng.random_range(-max_speed..=max_speed),
+            rng.random_range(-max_speed..=max_speed),
         ];
-        self.lifetime = rng.gen_range(2.0..=10.0);
+        self.lifetime = rng.random_range(2.0..=10.0);
     }
 }
 
@@ -77,21 +77,21 @@ pub struct ParticleSystem {
 
 impl ParticleSystem {
     pub fn new() -> Self {
-        let mut rng = rand::thread_rng();
-        let n = 1200;
+        let mut rng = rand::rng();
+        let n = 1000;
         Self {
             particles: (0..n)
                 .map(|_| {
                     Particle::new(
-                        [rng.gen_range(-0.5..=0.5), rng.gen_range(-0.5..=0.5)],
+                        [rng.random_range(-0.5..=0.5), rng.random_range(-0.5..=0.5)],
                         [0.0, 0.0],
-                        rng.gen_range(2.0..=10.0),
+                        rng.random_range(2.0..=10.0),
                     )
                 })
                 .collect(),
-            flow_field: FlowField::new(48, 48, 3.0, 1234),
-            flow_speed: 2.0,
-            flow_steering: 2.0,
+            flow_field: FlowField::new(32, 32, 2.0, 237895),
+            flow_speed: 1.0,
+            flow_steering: 4.0,
         }
     }
 
