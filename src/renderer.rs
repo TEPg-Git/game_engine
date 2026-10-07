@@ -470,7 +470,11 @@ impl Renderer {
             render_pass.set_pipeline(&self.render_pipeline);
 
             for entity in &state.entities {
-                let Some(render_object) = self.render_objects.get_mut(entity.id as usize).and_then(Option::as_mut) else {
+                let Some(render_object) = self
+                    .render_objects
+                    .get_mut(entity.id as usize)
+                    .and_then(Option::as_mut)
+                else {
                     continue;
                 };
 

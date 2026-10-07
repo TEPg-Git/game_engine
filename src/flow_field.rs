@@ -1,9 +1,12 @@
+use rand::{Rng, SeedableRng};
+use rand_chacha::ChaCha8Rng;
 use std::f32::consts::TAU;
 
 /// A 2D vector field sampled over a regular grid.
 /// World coordinates are expected to be approximately [-1, 1].
 #[derive(Clone, Debug)]
 pub struct FlowField {
+    seed: u64,
     width: usize,
     height: usize,
     cell_width: f32,
@@ -12,13 +15,16 @@ pub struct FlowField {
 }
 
 impl FlowField {
-    pub fn new(width: usize, height: usize, scale: f32) -> Self {
-        assert!(width > 0 && height > 0, "Flow field dimensions must be non-zero");
-
+    pub fn new(width: usize, height: usize, scale: f32, seed: u64) -> Self {
+        assert!(
+            width > 0 && height > 0,
+            "Flow field dimensions must be non-zero"
+        );
         let cell_width = 2.0 / width as f32;
         let cell_height = 2.0 / height as f32;
 
         let mut field = Self {
+            seed,
             width,
             height,
             cell_width,
@@ -32,6 +38,9 @@ impl FlowField {
 
     /// Generates a smooth deterministic vector field without an extra noise dependency.
     pub fn generate(&mut self, scale: f32) {
+        let mut rng = ChaCha8Rng::seed_from_u64(self.seed);
+        let offset_x = rng.random_range(0.0..TAU);
+        let offset_y = rng.random_range(0.0..TAU);
         for y in 0..self.height {
             for x in 0..self.width {
                 let world_x = -1.0 + (x as f32 + 0.5) * self.cell_width;
@@ -40,9 +49,9 @@ impl FlowField {
                 let sx = world_x * scale;
                 let sy = world_y * scale;
 
-                let angle = (sx.sin() * sy.cos()
-                    + (sx * 0.5).cos() * (sy * 0.75).sin()) * TAU;
-
+                let angle = ((sx + offset_x).sin() * (sy + offset_y).cos()
+                    + ((sx + offset_x) * 0.5).cos() * ((sy + offset_y) * 0.75).sin())
+                    * TAU;
                 let index = self.index(x, y);
                 self.vectors[index] = [angle.cos(), angle.sin()];
             }
@@ -88,10 +97,7 @@ impl FlowField {
 }
 
 fn lerp2(a: [f32; 2], b: [f32; 2], t: f32) -> [f32; 2] {
-    [
-        a[0] + (b[0] - a[0]) * t,
-        a[1] + (b[1] - a[1]) * t,
-    ]
+    [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]
 }
 
 fn normalize(v: [f32; 2]) -> [f32; 2] {
@@ -111,7 +117,7 @@ mod tests {
 
     #[test]
     fn sample_is_normalized() {
-        let field = FlowField::new(32, 32, 2.5);
+        let field = FlowField::new(32, 32, 2.5, 12345);
         let vector = field.sample([0.15, -0.25]);
         let length = (vector[0] * vector[0] + vector[1] * vector[1]).sqrt();
 
@@ -120,10 +126,24 @@ mod tests {
 
     #[test]
     fn samples_are_finite_outside_bounds() {
-        let field = FlowField::new(8, 8, 2.0);
+        let field = FlowField::new(8, 8, 2.0, 12345);
         let vector = field.sample([100.0, -100.0]);
 
         assert!(vector[0].is_finite());
         assert!(vector[1].is_finite());
+    }
+    #[test]
+    fn same_seed_produces_same_field() {
+        let a = FlowField::new(32, 32, 2.5, 12345);
+        let b = FlowField::new(32, 32, 2.5, 12345);
+
+        assert_eq!(a.vectors, b.vectors);
+    }
+    #[test]
+    fn different_seeds_produce_different_fields() {
+        let a = FlowField::new(32, 32, 2.5, 12345);
+        let b = FlowField::new(32, 32, 2.5, 54321);
+
+        assert_ne!(a.vectors, b.vectors);
     }
 }

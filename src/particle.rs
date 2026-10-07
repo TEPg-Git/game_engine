@@ -89,7 +89,7 @@ impl ParticleSystem {
                     )
                 })
                 .collect(),
-            flow_field: FlowField::new(48, 48, 3.0),
+            flow_field: FlowField::new(48, 48, 3.0, 1234),
             flow_speed: 2.0,
             flow_steering: 2.0,
         }

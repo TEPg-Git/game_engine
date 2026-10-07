@@ -10,7 +10,7 @@ winit = "0.30.13"
 bytemuck = { version = "1", features = ["derive"] }
 image = "0.25"
 fontdue = "0.9"
-rand = "0.8"
-
+rand = "0.9"
+rand_chacha = "0.9"
 [build-dependencies]
 winres = "0.1"
