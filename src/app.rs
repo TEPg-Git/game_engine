@@ -59,7 +59,6 @@ impl App {
     fn update(&mut self) {
         self.time.update();
         self.diagnostics.update(&self.time);
-        println!("Frame-{:?}", self.time.fps());
         self.game_state.update(self.time.delta_time());
     }
 
