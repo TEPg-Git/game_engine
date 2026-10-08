@@ -39,13 +39,8 @@ impl Particle {
 
         self.velocity[0] += (target_velocity[0] - self.velocity[0]) * blend;
         self.velocity[1] += (target_velocity[1] - self.velocity[1]) * blend;
-        self.position[0] += self.velocity[0] * dt;
-        self.position[1] += self.velocity[1] * dt;
-        self.lifetime -= dt;
 
-        if self.lifetime <= 0.0 {
-            self.lifetime = 0.0;
-        }
+        self.update(dt);
     }
 
     pub fn is_alive(&self) -> bool {
@@ -53,7 +48,7 @@ impl Particle {
     }
 
     pub fn reset(&mut self) {
-        let max_speed = 0.0;
+        let max_speed = 1.0;
         let max_range = 1.0;
         let mut rng = rand::rng();
         self.position = [
@@ -78,7 +73,7 @@ pub struct ParticleSystem {
 impl ParticleSystem {
     pub fn new() -> Self {
         let mut rng = rand::rng();
-        let n = 1000;
+        let n = 1200;
         Self {
             particles: (0..n)
                 .map(|_| {
@@ -89,9 +84,9 @@ impl ParticleSystem {
                     )
                 })
                 .collect(),
-            flow_field: FlowField::new(32, 32, 2.0, 237895),
-            flow_speed: 1.0,
-            flow_steering: 4.0,
+            flow_field: FlowField::new(48, 48, 3.0, 927538),
+            flow_speed: 2.0,
+            flow_steering: 5.0,
         }
     }
 

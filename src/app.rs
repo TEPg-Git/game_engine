@@ -84,7 +84,7 @@ impl App {
                     &renderer.device,
                     &renderer.queue,
                     "assets/textures/Ball.png",
-                    [0.01, 0.01],
+                    [0.005, 0.005],
                 );
 
                 particle_entity.set_sprite(particle_sprite);
