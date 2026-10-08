@@ -22,10 +22,7 @@ impl Particle {
         }
         self.position[0] += self.velocity[0] * dt;
         self.position[1] += self.velocity[1] * dt;
-        self.lifetime -= dt;
-        if self.lifetime <= 0.0 {
-            self.lifetime = 0.0;
-        }
+        self.lifetime = (self.lifetime - dt).max(0.0);
     }
 
     pub fn update_with_flow(&mut self, dt: f32, flow_field: &FlowField, speed: f32, steering: f32) {
@@ -73,9 +70,9 @@ pub struct ParticleSystem {
 impl ParticleSystem {
     pub fn new() -> Self {
         let mut rng = rand::rng();
-        let n = 1200;
+        const PARTICLE_COUNT: usize = 1000;
         Self {
-            particles: (0..n)
+            particles: (0..PARTICLE_COUNT)
                 .map(|_| {
                     Particle::new(
                         [rng.random_range(-0.5..=0.5), rng.random_range(-0.5..=0.5)],
