@@ -60,6 +60,7 @@ impl App {
         self.time.update();
         self.diagnostics.update(&self.time);
         self.game_state.update(self.time.delta_time());
+        println!("FPS-{}", self.time.fps());
     }
 
     fn render(&mut self) {
@@ -84,7 +85,7 @@ impl App {
                     &renderer.device,
                     &renderer.queue,
                     "assets/textures/Ball.png",
-                    [0.005, 0.005],
+                    [0.01, 0.01],
                 );
 
                 particle_entity.set_sprite(particle_sprite);
