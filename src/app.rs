@@ -60,7 +60,6 @@ impl App {
         self.time.update();
         self.diagnostics.update(&self.time);
         self.game_state.update(self.time.delta_time());
-        println!("FPS-{}", self.time.fps());
     }
 
     fn render(&mut self) {
