@@ -100,8 +100,11 @@ impl App {
             renderer.create_render_object(entity);
         }
 
-        renderer.create_text_object(0, self.diagnostics.fps_text.clone());
-        renderer.create_text_object(1, self.diagnostics.frame_time_ms_text.clone());
+        // Keep text-object IDs aligned with Renderer::render().
+        renderer.create_text_object(0, self.game_state.text.clone());
+        renderer.create_text_object(1, self.game_state.score_text.clone());
+        renderer.create_text_object(2, self.diagnostics.fps_text.clone());
+        renderer.create_text_object(3, self.diagnostics.frame_time_ms_text.clone());
     }
 }
 
