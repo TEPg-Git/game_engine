@@ -24,16 +24,5 @@ impl GameState {
 
     pub fn update(&mut self, delta_time: f32) {
         self.particle_system.update(delta_time);
-
-        for (particle, entity) in self
-            .particle_system
-            .particles
-            .iter()
-            .zip(self.entities.iter_mut())
-        {
-            entity
-                .transform
-                .set_position(particle.position[0], particle.position[1]);
-        }
     }
 }

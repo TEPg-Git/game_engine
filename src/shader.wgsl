@@ -52,77 +52,44 @@ struct VertexOutput {
 @vertex
 fn vs_main(vertex: VertexInput) -> VertexOutput {
     var output: VertexOutput;
-
-    // ========================================================
-    // LOCAL POSITION
-    // ========================================================
-
     var position = vertex.position;
-
-    // ========================================================
-    // SCALE
-    // ========================================================
-
     position *= uniforms.scale.xy;
-
-    // ========================================================
-    // ROTATION
-    // ========================================================
-
     let rotation = uniforms.position_rotation.z;
-
     let cos_angle = cos(rotation);
     let sin_angle = sin(rotation);
-
     let rotated_position = vec2<f32>(
         position.x * cos_angle - position.y * sin_angle,
         position.x * sin_angle + position.y * cos_angle
     );
-
-    // ========================================================
-    // WORLD POSITION
-    // ========================================================
-
     position = rotated_position + uniforms.position_rotation.xy;
-
-    // ========================================================
-    // CAMERA
-    // ========================================================
-
     position -= camera.position;
-
     position *= camera.zoom;
-
-    // ========================================================
-    // OUTPUT
-    // ========================================================
-
-    output.position = vec4<f32>(
-        position,
-        0.0,
-        1.0
-    );
-
+    output.position = vec4<f32>(position, 0.0, 1.0);
     output.tex_coords = vertex.tex_coords;
-
     return output;
 }
 
-
-// ============================================================
-// TEXTURE
-// ============================================================
+// Instanced particles use the same shared quad; each instance supplies its center.
+@vertex
+fn vs_particle(
+    @location(0) position: vec2<f32>,
+    @location(1) tex_coords: vec2<f32>,
+    @location(2) particle_position: vec2<f32>,
+) -> VertexOutput {
+    var output: VertexOutput;
+    var world_position = position + particle_position;
+    world_position -= camera.position;
+    world_position *= camera.zoom;
+    output.position = vec4<f32>(world_position, 0.0, 1.0);
+    output.tex_coords = tex_coords;
+    return output;
+}
 
 @group(1) @binding(0)
 var sprite_texture: texture_2d<f32>;
 
 @group(1) @binding(1)
 var sprite_sampler: sampler;
-
-
-// ============================================================
-// FRAGMENT SHADER
-// ============================================================
 
 @fragment
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {

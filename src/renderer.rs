@@ -10,6 +10,27 @@ use crate::sprite::Sprite;
 use crate::state::GameState;
 use crate::text::{Text, create_text_bitmap_with_options, load_font};
 
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct ParticleInstance {
+    position: [f32; 2],
+}
+
+impl ParticleInstance {
+    fn layout() -> wgpu::VertexBufferLayout<'static> {
+        const ATTRIBUTES: [wgpu::VertexAttribute; 1] = wgpu::vertex_attr_array![2 => Float32x2];
+
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<ParticleInstance>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &ATTRIBUTES,
+        }
+    }
+    fn from_position(position: [f32; 2]) -> Self {
+        Self { position }
+    }
+}
+
 // ============================================================
 // RENDER OBJECT
 // ============================================================
@@ -59,6 +80,14 @@ pub struct Renderer {
 
     // PIPELINE
     pub render_pipeline: wgpu::RenderPipeline,
+    pub particle_pipeline: wgpu::RenderPipeline,
+    pub particle_vertex_buffer: wgpu::Buffer,
+    pub particle_vertex_count: u32,
+    pub particle_instance_buffer: wgpu::Buffer,
+    particle_instance_capacity: usize,
+    particle_uniform_buffer: wgpu::Buffer,
+    particle_uniform_bind_group: wgpu::BindGroup,
+    particle_bind_group: Option<wgpu::BindGroup>,
     pub text_sampler: wgpu::Sampler,
     pub camera_uniform_buffer: wgpu::Buffer,
 
@@ -216,6 +245,44 @@ impl Renderer {
             cache: None,
         });
 
+        let particle_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Particle Instanced Render Pipeline"),
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_particle"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[Some(Vertex::layout()), Some(ParticleInstance::layout())],
+            },
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: None,
+                unclipped_depth: false,
+                polygon_mode: wgpu::PolygonMode::Fill,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("fs_main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview_mask: None,
+            cache: None,
+        });
+
         let text_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("Text Sampler"),
             mag_filter: wgpu::FilterMode::Linear,
@@ -236,6 +303,52 @@ impl Renderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
+        const PARTICLE_BUFFER_CAPACITY: usize = 1000;
+
+        let particle_instance_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Particle Instance Buffer"),
+            size: (std::mem::size_of::<ParticleInstance>() * PARTICLE_BUFFER_CAPACITY)
+                as wgpu::BufferAddress,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        // Match the current particle sprite size (0.01 x 0.01 world units).
+        // Each instance supplies only its center position.
+        let particle_vertices = Self::quad_vertices(0.005, 0.005);
+        let particle_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Shared Particle Vertex Buffer"),
+            contents: bytemuck::cast_slice(&particle_vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let particle_vertex_count = particle_vertices.len() as u32;
+
+        let particle_uniforms = Uniforms {
+            position_rotation: [0.0, 0.0, 0.0, 0.0],
+            scale: [1.0, 1.0, 0.0, 0.0],
+            color: [1.0, 1.0, 1.0, 1.0],
+        };
+        let particle_uniform_buffer =
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Particle Uniform Buffer"),
+                contents: bytemuck::bytes_of(&particle_uniforms),
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
+        let particle_uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Particle Uniform Bind Group"),
+            layout: &uniform_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: particle_uniform_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: camera_uniform_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
         Self {
             surface,
             device,
@@ -249,6 +362,14 @@ impl Renderer {
             texture_bind_group_layout,
             uniform_bind_group_layout,
             render_pipeline,
+            particle_pipeline,
+            particle_vertex_buffer,
+            particle_vertex_count,
+            particle_instance_buffer,
+            particle_instance_capacity: PARTICLE_BUFFER_CAPACITY,
+            particle_uniform_buffer,
+            particle_uniform_bind_group,
+            particle_bind_group: None,
             text_sampler,
             camera_uniform_buffer,
             render_objects: Vec::with_capacity(16),
@@ -328,6 +449,10 @@ impl Renderer {
         }
     }
 
+    pub fn initialize_particle_resources(&mut self, sprite: &Sprite) {
+        self.particle_bind_group = Some(self.create_sprite_bind_group(sprite));
+    }
+
     fn create_sprite_bind_group(&self, sprite: &Sprite) -> wgpu::BindGroup {
         self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Sprite Bind Group"),
@@ -399,6 +524,34 @@ impl Renderer {
         self.draw_calls = 0;
         self.buffer_writes = 0;
 
+        let particle_instances: Vec<ParticleInstance> = state
+            .particle_system
+            .particles
+            .iter()
+            .map(|particle| ParticleInstance::from_position(particle.position))
+            .collect();
+
+        // Grow the instance buffer if the particle count is increased at runtime.
+        if particle_instances.len() > self.particle_instance_capacity {
+            self.particle_instance_capacity = particle_instances.len().next_power_of_two();
+            self.particle_instance_buffer = self.device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("Particle Instance Buffer"),
+                size: (std::mem::size_of::<ParticleInstance>() * self.particle_instance_capacity)
+                    as wgpu::BufferAddress,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+        }
+
+        if !particle_instances.is_empty() {
+            self.queue.write_buffer(
+                &self.particle_instance_buffer,
+                0,
+                bytemuck::cast_slice(&particle_instances),
+            );
+            self.buffer_writes += 1;
+        }
+
         self.update_text_object(0, &state.text);
         self.update_text_object(1, &state.score_text);
         self.update_text_object(2, fps_text);
@@ -466,6 +619,22 @@ impl Renderer {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
+
+            // Draw every particle from one shared quad + one per-instance position buffer.
+            if !particle_instances.is_empty() {
+                if let Some(particle_bind_group) = self.particle_bind_group.as_ref() {
+                    render_pass.set_pipeline(&self.particle_pipeline);
+                    render_pass.set_bind_group(0, &self.particle_uniform_bind_group, &[]);
+                    render_pass.set_bind_group(1, particle_bind_group, &[]);
+                    render_pass.set_vertex_buffer(0, self.particle_vertex_buffer.slice(..));
+                    render_pass.set_vertex_buffer(1, self.particle_instance_buffer.slice(..));
+                    render_pass.draw(
+                        0..self.particle_vertex_count,
+                        0..particle_instances.len() as u32,
+                    );
+                    self.draw_calls += 1;
+                }
+            }
 
             render_pass.set_pipeline(&self.render_pipeline);
 

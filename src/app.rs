@@ -1,5 +1,4 @@
 use crate::diagnostics::Diagnostics;
-use crate::entity::Entity;
 use crate::renderer::Renderer;
 use crate::sprite::Sprite;
 use crate::state::GameState;
@@ -77,25 +76,16 @@ impl App {
     }
 
     fn initialize_scene(&mut self, renderer: &mut Renderer) {
-        if self.game_state.entities.is_empty() {
-            for (index, particle) in self.game_state.particle_system.particles.iter().enumerate() {
-                let mut particle_entity = Entity::new(index as u32, &format!("Particle {index}"));
-                let particle_sprite = Sprite::from_file(
-                    &renderer.device,
-                    &renderer.queue,
-                    "assets/textures/Ball.png",
-                    [0.01, 0.01],
-                );
+        // Load the particle texture once. All particles share this texture binding.
+        let particle_sprite = Sprite::from_file(
+            &renderer.device,
+            &renderer.queue,
+            "assets/textures/Ball.png",
+            [0.01, 0.01],
+        );
+        renderer.initialize_particle_resources(&particle_sprite);
 
-                particle_entity.set_sprite(particle_sprite);
-                particle_entity
-                    .transform
-                    .set_position(particle.position[0], particle.position[1]);
-
-                self.game_state.entities.push(particle_entity);
-            }
-        }
-
+        // Keep support for ordinary sprite entities; particles are no longer entities.
         for entity in &self.game_state.entities {
             renderer.create_render_object(entity);
         }
