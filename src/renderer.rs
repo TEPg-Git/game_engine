@@ -14,11 +14,13 @@ use crate::text::{Text, create_text_bitmap_with_options, load_font};
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct ParticleInstance {
     position: [f32; 2],
+    color: [f32; 4],
 }
 
 impl ParticleInstance {
     fn layout() -> wgpu::VertexBufferLayout<'static> {
-        const ATTRIBUTES: [wgpu::VertexAttribute; 1] = wgpu::vertex_attr_array![2 => Float32x2];
+        const ATTRIBUTES: [wgpu::VertexAttribute; 2] =
+            wgpu::vertex_attr_array![2 => Float32x2,3 => Float32x4];
 
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<ParticleInstance>() as wgpu::BufferAddress,
@@ -26,8 +28,8 @@ impl ParticleInstance {
             attributes: &ATTRIBUTES,
         }
     }
-    fn from_position(position: [f32; 2]) -> Self {
-        Self { position }
+    fn from_position_color(position: [f32; 2], color: [f32; 4]) -> Self {
+        Self { position, color }
     }
 }
 
@@ -528,7 +530,9 @@ impl Renderer {
             .particle_system
             .particles
             .iter()
-            .map(|particle| ParticleInstance::from_position(particle.position))
+            .map(|particle| {
+                ParticleInstance::from_position_color(particle.position, particle.color)
+            })
             .collect();
 
         // Grow the instance buffer if the particle count is increased at runtime.

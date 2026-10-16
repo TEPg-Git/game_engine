@@ -4,14 +4,16 @@ use rand::Rng;
 pub struct Particle {
     pub position: [f32; 2],
     pub velocity: [f32; 2],
+    pub color: [f32; 4],
     pub lifetime: f32,
 }
 
 impl Particle {
-    pub fn new(position: [f32; 2], velocity: [f32; 2], lifetime: f32) -> Self {
+    pub fn new(position: [f32; 2], velocity: [f32; 2], color: [f32; 4], lifetime: f32) -> Self {
         Self {
             position,
             velocity,
+            color,
             lifetime,
         }
     }
@@ -23,6 +25,11 @@ impl Particle {
         self.position[0] += self.velocity[0] * dt;
         self.position[1] += self.velocity[1] * dt;
         self.lifetime = (self.lifetime - dt).max(0.0);
+
+        let speed = (self.velocity[0] * self.velocity[0] + self.velocity[1] * self.velocity[1])
+            .sqrt()
+            .clamp(0.0, 1.0);
+        self.color[0] = speed;
     }
 
     pub fn update_with_flow(&mut self, dt: f32, flow_field: &FlowField, speed: f32, steering: f32) {
@@ -77,6 +84,7 @@ impl ParticleSystem {
                     Particle::new(
                         [rng.random_range(-0.5..=0.5), rng.random_range(-0.5..=0.5)],
                         [0.0, 0.0],
+                        [1.0, 1.0, 1.0, 1.0],
                         rng.random_range(2.0..=10.0),
                     )
                 })
