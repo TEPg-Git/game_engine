@@ -42,6 +42,9 @@ struct VertexOutput {
 
     @location(0)
     tex_coords: vec2<f32>,
+
+    @location(1)
+    color: vec4<f32>,
 };
 
 
@@ -66,6 +69,7 @@ fn vs_main(vertex: VertexInput) -> VertexOutput {
     position *= camera.zoom;
     output.position = vec4<f32>(position, 0.0, 1.0);
     output.tex_coords = vertex.tex_coords;
+    output.color = vec4<f32>(1.0, 1.0, 1.0, 1.0);
     return output;
 }
 
@@ -75,6 +79,7 @@ fn vs_particle(
     @location(0) position: vec2<f32>,
     @location(1) tex_coords: vec2<f32>,
     @location(2) particle_position: vec2<f32>,
+    @location(3) particle_color: vec4<f32>,
 ) -> VertexOutput {
     var output: VertexOutput;
     var world_position = position + particle_position;
@@ -82,6 +87,7 @@ fn vs_particle(
     world_position *= camera.zoom;
     output.position = vec4<f32>(world_position, 0.0, 1.0);
     output.tex_coords = tex_coords;
+    output.color=particle_color;
     return output;
 }
 
@@ -94,5 +100,5 @@ var sprite_sampler: sampler;
 @fragment
 fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
     let texture_color = textureSample(sprite_texture, sprite_sampler, vertex.tex_coords);
-    return texture_color * uniforms.color;
-}
+    return texture_color * uniforms.color * vertex.color;
+    }

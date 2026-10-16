@@ -77,7 +77,7 @@ pub struct ParticleSystem {
 impl ParticleSystem {
     pub fn new() -> Self {
         let mut rng = rand::rng();
-        const PARTICLE_COUNT: usize = 1000;
+        const PARTICLE_COUNT: usize = 10000;
         Self {
             particles: (0..PARTICLE_COUNT)
                 .map(|_| {
@@ -90,8 +90,8 @@ impl ParticleSystem {
                 })
                 .collect(),
             flow_field: FlowField::new(48, 48, 3.0, 927538),
-            flow_speed: 2.0,
-            flow_steering: 5.0,
+            flow_speed: 0.7,
+            flow_steering: 3.0,
         }
     }
 
