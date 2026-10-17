@@ -36,6 +36,7 @@ The repository uses the following branch workflow:
 * `pong-game` — Pong development history
 * `optimizations` — engine optimization and cleanup work
 * `visualization-demo` — October Particle Flow Field visualization development
+* `dynamic-flow-field` — dynamic and organic flow-field experiments
 
 ---
 
@@ -280,10 +281,14 @@ The demo will use particles moving through a procedurally generated vector field
 * [x] Particle position and velocity
 * [x] Delta-time based movement
 * [x] Boundary handling
-* [ ] Flow-field generation
-* [ ] Particle movement through the flow field
+* [x] Flow-field generation
+* [x] Particle movement through the flow field
 * [x] Particle lifetime and respawning
-* [ ] Visual variation between particles
+* [x] Visual variation between particles
+* [x] Velocity-based particle colors
+* [x] Instanced particle rendering for large particle counts
+* [ ] Dynamic, time-varying flow field
+* [ ] More organic flow patterns and vortices
 * [ ] Configurable simulation parameters
 * [ ] User interaction
 * [ ] Particle trails
@@ -301,11 +306,11 @@ Build the initial particle representation, spawning, movement, delta-time integr
 
 **October 5–11 — Flow Field**
 
-Implement the vector-field representation and make particles follow the field.
+Implement the vector-field representation and make particles follow the field. The static procedural flow field and particle steering are now implemented.
 
 **October 12–18 — Visual System**
 
-Add particle lifetime, respawning, visual variation, color changes, and trails.
+Add particle lifetime, respawning, velocity-based color variation, and instanced rendering. Dynamic flow-field motion and trails remain planned.
 
 **October 19–24 — Interaction**
 
