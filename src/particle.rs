@@ -34,12 +34,12 @@ impl Particle {
             self.color[0] = 0.16;
             self.color[1] = 0.47;
             self.color[2] = 1.0;
-            self.color[3] = 0.1;
+            self.color[3] = 0.2;
         } else if speed < 0.6 {
             self.color[0] = 0.0;
             self.color[1] = 0.85;
             self.color[2] = 1.0;
-            self.color[3] = 0.4;
+            self.color[3] = 0.6;
         } else {
             self.color[0] = 1.0;
             self.color[1] = 0.85;
@@ -68,7 +68,7 @@ impl Particle {
     }
 
     pub fn reset(&mut self) {
-        let max_speed = 0.1;
+        let max_speed = 0.0;
         let max_range = 1.0;
         let mut rng = rand::rng();
         self.position = [
@@ -93,7 +93,7 @@ pub struct ParticleSystem {
 impl ParticleSystem {
     pub fn new() -> Self {
         let mut rng = rand::rng();
-        const PARTICLE_COUNT: usize = 30000;
+        const PARTICLE_COUNT: usize = 100000;
         Self {
             particles: (0..PARTICLE_COUNT)
                 .map(|_| {
@@ -105,8 +105,8 @@ impl ParticleSystem {
                     )
                 })
                 .collect(),
-            flow_field: FlowField::new(1024, 1024, 20.0, 92498),
-            flow_speed: 0.8,
+            flow_field: FlowField::new(1024, 1024, 3.0, 9678498),
+            flow_speed: 1.0,
             flow_steering: 2.0,
         }
     }
