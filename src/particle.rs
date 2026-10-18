@@ -88,12 +88,20 @@ pub struct ParticleSystem {
     pub flow_field: FlowField,
     pub flow_speed: f32,
     pub flow_steering: f32,
+    /// Total simulation time, in seconds, independent of frame delta.
+    elapsed_time: f32,
+    /// Seconds between flow field rebuilds. Reduces the cost of rebuilding a large grid every frame.
+    field_update_interval: f32,
+    field_update_accumulator: f32,
+    field_scale: f32,
 }
 
 impl ParticleSystem {
     pub fn new() -> Self {
         let mut rng = rand::rng();
         const PARTICLE_COUNT: usize = 100000;
+        let field_scale = 3.0;
+
         Self {
             particles: (0..PARTICLE_COUNT)
                 .map(|_| {
@@ -105,13 +113,29 @@ impl ParticleSystem {
                     )
                 })
                 .collect(),
-            flow_field: FlowField::new(1024, 1024, 3.0, 9678498),
+            flow_field: FlowField::new(1024, 1024, field_scale, 9678498),
             flow_speed: 1.0,
             flow_steering: 2.0,
+            elapsed_time: 0.0,
+            // 20 updates/sec by default; tune this down if field generation costs too much.
+            field_update_interval: 0.05,
+            field_update_accumulator: 0.0,
+            field_scale,
         }
     }
 
     pub fn update(&mut self, dt: f32) {
+        let dt = dt.max(0.0);
+        self.elapsed_time += dt;
+        self.field_update_accumulator += dt;
+
+        if self.field_update_accumulator >= self.field_update_interval {
+            // Preserve leftover time so the update cadence does not drift.
+            self.field_update_accumulator %= self.field_update_interval;
+            self.flow_field
+                .generate_at_time(self.field_scale, self.elapsed_time);
+        }
+
         let flow_field = &self.flow_field;
         let speed = self.flow_speed;
         let steering = self.flow_steering;
