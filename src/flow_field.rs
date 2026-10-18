@@ -36,11 +36,25 @@ impl FlowField {
         field
     }
 
-    /// Generates a smooth deterministic vector field without an extra noise dependency.
+    /// Generates the original smooth, deterministic static field.
     pub fn generate(&mut self, scale: f32) {
+        self.generate_at_time(scale, 0.0);
+    }
+
+    /// Rebuilds the field for an elapsed-time value.
+    ///
+    /// Time offsets evolve continuously while the seeded spatial offsets keep
+    /// the field reproducible. Call at a controlled interval if regenerating
+    /// the full grid every frame is too expensive for the particle count.
+    pub fn generate_at_time(&mut self, scale: f32, time: f32) {
         let mut rng = ChaCha8Rng::seed_from_u64(self.seed);
         let offset_x = rng.random_range(0.0..TAU);
         let offset_y = rng.random_range(0.0..TAU);
+        let scale = scale.max(0.001);
+        let time_x = time * 0.7;
+        let time_y = time * 0.56;
+        let time_mix = time * 0.4;
+
         for y in 0..self.height {
             for x in 0..self.width {
                 let world_x = -1.0 + (x as f32 + 0.5) * self.cell_width;
@@ -49,9 +63,14 @@ impl FlowField {
                 let sx = world_x * scale;
                 let sy = world_y * scale;
 
-                let angle = ((sx + offset_x).sin() * (sy + offset_y).cos()
-                    + ((sx + offset_x) * 0.5).cos() * ((sy + offset_y) * 0.75).sin())
-                    * TAU;
+                // Several overlapping waves create a smoothly evolving,
+                // organic direction field without an extra noise dependency.
+                let wave_a = (sx * 2.0 + offset_x + time_x).sin()
+                    * (sy * 1.5 + offset_y - time_y).cos();
+                let wave_b = ((sx + sy) * 0.8 + offset_x * 0.5 + time_mix).sin() * 0.5;
+                let wave_c = ((sx - sy) * 0.65 + offset_y * 0.75 - time_x * 0.6).cos() * 0.35;
+                let angle = (wave_a + wave_b + wave_c) * TAU;
+
                 let index = self.index(x, y);
                 self.vectors[index] = [angle.cos(), angle.sin()];
             }
@@ -132,6 +151,7 @@ mod tests {
         assert!(vector[0].is_finite());
         assert!(vector[1].is_finite());
     }
+
     #[test]
     fn same_seed_produces_same_field() {
         let a = FlowField::new(32, 32, 2.5, 12345);
@@ -139,11 +159,22 @@ mod tests {
 
         assert_eq!(a.vectors, b.vectors);
     }
+
     #[test]
     fn different_seeds_produce_different_fields() {
         let a = FlowField::new(32, 32, 2.5, 12345);
         let b = FlowField::new(32, 32, 2.5, 54321);
 
         assert_ne!(a.vectors, b.vectors);
+    }
+
+    #[test]
+    fn dynamic_field_changes_with_time() {
+        let mut field = FlowField::new(16, 16, 3.0, 12345);
+        let initial = field.vectors.clone();
+
+        field.generate_at_time(3.0, 1.0);
+
+        assert_ne!(initial, field.vectors);
     }
 }
