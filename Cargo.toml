@@ -12,5 +12,6 @@ image = "0.25"
 fontdue = "0.9"
 rand = "0.9"
 rand_chacha = "0.9"
+rayon = "1"
 [build-dependencies]
 winres = "0.1"
