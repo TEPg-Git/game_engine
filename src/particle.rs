@@ -8,6 +8,31 @@ pub struct Particle {
     pub lifetime: f32,
 }
 
+fn smooth_color_gradient(t: f32) -> [f32; 4] {
+    // Deep blue -> cyan -> violet -> gold.
+    let stops: [[f32; 4]; 4] = [
+        [0.10, 0.20, 1.00, 0.25],
+        [0.00, 0.90, 1.00, 0.60],
+        [0.75, 0.20, 1.00, 0.80],
+        [1.00, 0.75, 0.15, 1.00],
+    ];
+
+    let scaled_t = t.clamp(0.0, 1.0) * 3.0;
+    let index = (scaled_t.floor() as usize).min(2);
+    let local_t = scaled_t - index as f32;
+    let blend = local_t * local_t * (3.0 - 2.0 * local_t);
+
+    let a = stops[index];
+    let b = stops[index + 1];
+
+    [
+        a[0] + (b[0] - a[0]) * blend,
+        a[1] + (b[1] - a[1]) * blend,
+        a[2] + (b[2] - a[2]) * blend,
+        a[3] + (b[3] - a[3]) * blend,
+    ]
+}
+
 impl Particle {
     pub fn new(position: [f32; 2], velocity: [f32; 2], color: [f32; 4], lifetime: f32) -> Self {
         Self {
@@ -26,26 +51,14 @@ impl Particle {
         self.position[1] += self.velocity[1] * dt;
         self.lifetime = (self.lifetime - dt).max(0.0);
 
-        let speed = (self.velocity[0] * self.velocity[0] + self.velocity[1] * self.velocity[1])
-            .sqrt()
-            .clamp(0.0, 1.0);
+        let speed = (self.velocity[0] * self.velocity[0]
+            + self.velocity[1] * self.velocity[1])
+            .sqrt();
 
-        if speed < 0.3 {
-            self.color[0] = 0.16;
-            self.color[1] = 0.47;
-            self.color[2] = 1.0;
-            self.color[3] = 0.2;
-        } else if speed < 0.6 {
-            self.color[0] = 0.0;
-            self.color[1] = 0.85;
-            self.color[2] = 1.0;
-            self.color[3] = 0.6;
-        } else {
-            self.color[0] = 1.0;
-            self.color[1] = 0.85;
-            self.color[2] = 0.2;
-            self.color[3] = 1.0;
-        }
+        // Map speed to the palette. Increase this divisor if most particles turn gold;
+        // decrease it if most particles remain blue or cyan.
+        let color_t = (speed / 1.0).clamp(0.0, 1.0);
+        self.color = smooth_color_gradient(color_t);
     }
 
     pub fn update_with_flow(&mut self, dt: f32, flow_field: &FlowField, speed: f32, steering: f32) {
