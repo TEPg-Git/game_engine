@@ -1,5 +1,6 @@
 use crate::flow_field::FlowField;
 use rand::Rng;
+use rayon::prelude::*;
 
 pub struct Particle {
     pub position: [f32; 2],
@@ -157,7 +158,7 @@ impl ParticleSystem {
         let speed = self.flow_speed;
         let steering = self.flow_steering;
 
-        for particle in &mut self.particles {
+        self.particles.par_iter_mut().for_each(|particle| {
             particle.update_with_flow(dt, flow_field, speed, steering);
 
             if !particle.is_alive()
@@ -168,6 +169,6 @@ impl ParticleSystem {
             {
                 particle.reset();
             }
-        }
+        });
     }
 }
