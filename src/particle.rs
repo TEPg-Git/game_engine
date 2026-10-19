@@ -44,6 +44,11 @@ impl Particle {
     }
 
     pub fn update(&mut self, dt: f32) {
+        // Keep standalone particle updates normalized to a reference speed of 1.0.
+        self.update_with_reference_speed(dt, 1.0);
+    }
+
+    fn update_with_reference_speed(&mut self, dt: f32, reference_speed: f32) {
         if self.lifetime <= 0.0 {
             return;
         }
@@ -55,9 +60,9 @@ impl Particle {
             + self.velocity[1] * self.velocity[1])
             .sqrt();
 
-        // Map speed to the palette. Increase this divisor if most particles turn gold;
-        // decrease it if most particles remain blue or cyan.
-        let color_t = (speed / 1.0).clamp(0.0, 1.0);
+        // Normalize against the configured flow speed so palette transitions
+        // remain consistent when ParticleSystem::flow_speed changes.
+        let color_t = (speed / reference_speed.max(0.001)).clamp(0.0, 1.0);
         self.color = smooth_color_gradient(color_t);
     }
 
@@ -73,7 +78,7 @@ impl Particle {
         self.velocity[0] += (target_velocity[0] - self.velocity[0]) * blend;
         self.velocity[1] += (target_velocity[1] - self.velocity[1]) * blend;
 
-        self.update(dt);
+        self.update_with_reference_speed(dt, speed.abs());
     }
 
     pub fn is_alive(&self) -> bool {
