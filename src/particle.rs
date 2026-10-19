@@ -56,9 +56,8 @@ impl Particle {
         self.position[1] += self.velocity[1] * dt;
         self.lifetime = (self.lifetime - dt).max(0.0);
 
-        let speed = (self.velocity[0] * self.velocity[0]
-            + self.velocity[1] * self.velocity[1])
-            .sqrt();
+        let speed =
+            (self.velocity[0] * self.velocity[0] + self.velocity[1] * self.velocity[1]).sqrt();
 
         // Normalize against the configured flow speed so palette transitions
         // remain consistent when ParticleSystem::flow_speed changes.
@@ -118,7 +117,7 @@ impl ParticleSystem {
     pub fn new() -> Self {
         let mut rng = rand::rng();
         const PARTICLE_COUNT: usize = 100000;
-        let field_scale = 3.0;
+        let field_scale = 2.0;
 
         Self {
             particles: (0..PARTICLE_COUNT)
@@ -131,12 +130,12 @@ impl ParticleSystem {
                     )
                 })
                 .collect(),
-            flow_field: FlowField::new(1024, 1024, field_scale, 9678498),
-            flow_speed: 1.0,
+            flow_field: FlowField::new(64, 64, field_scale, 9678498),
+            flow_speed: 0.3,
             flow_steering: 2.0,
             elapsed_time: 0.0,
             // 20 updates/sec by default; tune this down if field generation costs too much.
-            field_update_interval: 0.05,
+            field_update_interval: 0.5,
             field_update_accumulator: 0.0,
             field_scale,
         }
