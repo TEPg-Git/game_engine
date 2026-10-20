@@ -15,7 +15,6 @@ mod resources;
 mod text_renderer;
 
 pub use self::particle_renderer::ParticleInstance;
-pub use self::text_renderer::TextObject;
 
 // ============================================================
 // RENDER OBJECT

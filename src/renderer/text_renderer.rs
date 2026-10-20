@@ -5,78 +5,78 @@ use crate::renderer::{Renderer, TextObject};
 use crate::text::{Text, create_text_bitmap_with_options, load_font};
 
 impl Renderer {
-        pub fn create_text_object(&mut self, id: u32, text: Text) {
-            let font = load_font();
-    
-            let (rgba_data, text_width, text_height) = create_text_bitmap_with_options(
-                font,
-                &text.content,
-                text.font_size,
-                text.line_spacing,
-                text.letter_spacing,
-                text.max_width,
-                text.alignment,
-            );
-    
-            let text_texture = self.create_text_texture(&rgba_data, text_width, text_height);
-            let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
-    
-            let text_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Text Bind Group"),
-                layout: &self.texture_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&text_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&self.text_sampler),
-                    },
-                ],
-            });
-    
-            let (vertex_buffer, vertex_count) = self.create_text_vertex_buffer(text_width, text_height);
-    
-            let uniforms = Self::text_uniforms(&text);
-    
-            let uniform_buffer = self
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Text Uniform Buffer"),
-                    contents: bytemuck::bytes_of(&uniforms),
-                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+    pub fn create_text_object(&mut self, id: u32, text: Text) {
+        let font = load_font();
+        
+                let (rgba_data, text_width, text_height) = create_text_bitmap_with_options(
+                    font,
+                    &text.content,
+                    text.font_size,
+                    text.line_spacing,
+                    text.letter_spacing,
+                    text.max_width,
+                    text.alignment,
+                );
+        
+                let text_texture = self.create_text_texture(&rgba_data, text_width, text_height);
+                let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        
+                let text_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("Text Bind Group"),
+                    layout: &self.texture_bind_group_layout,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: wgpu::BindingResource::TextureView(&text_view),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: wgpu::BindingResource::Sampler(&self.text_sampler),
+                        },
+                    ],
                 });
-    
-            let uniform_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Text Uniform Bind Group"),
-                layout: &self.uniform_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: uniform_buffer.as_entire_binding(),
+        
+                let (vertex_buffer, vertex_count) = self.create_text_vertex_buffer(text_width, text_height);
+        
+                let uniforms = Self::text_uniforms(&text);
+        
+                let uniform_buffer = self
+                    .device
+                    .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("Text Uniform Buffer"),
+                        contents: bytemuck::bytes_of(&uniforms),
+                        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    });
+        
+                let uniform_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                    label: Some("Text Uniform Bind Group"),
+                    layout: &self.uniform_bind_group_layout,
+                    entries: &[
+                        wgpu::BindGroupEntry {
+                            binding: 0,
+                            resource: uniform_buffer.as_entire_binding(),
+                        },
+                        wgpu::BindGroupEntry {
+                            binding: 1,
+                            resource: self.camera_uniform_buffer.as_entire_binding(),
+                        },
+                    ],
+                });
+        
+                self.text_objects.insert(
+                    id,
+                    TextObject {
+                        revision: text.revision(),
+                        text,
+                        uniform_buffer,
+                        uniform_bind_group,
+                        text_texture,
+                        text_bind_group,
+                        vertex_buffer,
+                        vertex_count,
                     },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: self.camera_uniform_buffer.as_entire_binding(),
-                    },
-                ],
-            });
-    
-            self.text_objects.insert(
-                id,
-                TextObject {
-                    revision: text.revision(),
-                    text,
-                    uniform_buffer,
-                    uniform_bind_group,
-                    text_texture,
-                    text_bind_group,
-                    vertex_buffer,
-                    vertex_count,
-                },
-            );
-        }
+                );
+    }
 
     fn create_text_texture(
         &self,
@@ -170,63 +170,63 @@ impl Renderer {
                 }
     }
 
-        pub fn update_text_object(&mut self, id: u32, text: &Text) {
-            let needs_bitmap_update = self
-                .text_objects
-                .get(&id)
-                .map(|object| object.revision != text.revision())
-                .unwrap_or(true);
-    
-            if needs_bitmap_update {
-                let font = load_font();
-    
-                let (rgba_data, text_width, text_height) = create_text_bitmap_with_options(
-                    font,
-                    &text.content,
-                    text.font_size,
-                    text.line_spacing,
-                    text.letter_spacing,
-                    text.max_width,
-                    text.alignment,
-                );
-    
-                let text_texture = self.create_text_texture(&rgba_data, text_width, text_height);
-                let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
-    
-                let text_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                    label: Some("Text Bind Group"),
-                    layout: &self.texture_bind_group_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: wgpu::BindingResource::TextureView(&text_view),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::Sampler(&self.text_sampler),
-                        },
-                    ],
-                });
-    
-                let (vertex_buffer, vertex_count) =
-                    self.create_text_vertex_buffer(text_width, text_height);
-    
-                if let Some(object) = self.text_objects.get_mut(&id) {
-                    object.text_texture = text_texture;
-                    object.text_bind_group = text_bind_group;
-                    object.vertex_buffer = vertex_buffer;
-                    object.vertex_count = vertex_count;
-                    object.revision = text.revision();
+    pub fn update_text_object(&mut self, id: u32, text: &Text) {
+        let needs_bitmap_update = self
+                    .text_objects
+                    .get(&id)
+                    .map(|object| object.revision != text.revision())
+                    .unwrap_or(true);
+        
+                if needs_bitmap_update {
+                    let font = load_font();
+        
+                    let (rgba_data, text_width, text_height) = create_text_bitmap_with_options(
+                        font,
+                        &text.content,
+                        text.font_size,
+                        text.line_spacing,
+                        text.letter_spacing,
+                        text.max_width,
+                        text.alignment,
+                    );
+        
+                    let text_texture = self.create_text_texture(&rgba_data, text_width, text_height);
+                    let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
+        
+                    let text_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                        label: Some("Text Bind Group"),
+                        layout: &self.texture_bind_group_layout,
+                        entries: &[
+                            wgpu::BindGroupEntry {
+                                binding: 0,
+                                resource: wgpu::BindingResource::TextureView(&text_view),
+                            },
+                            wgpu::BindGroupEntry {
+                                binding: 1,
+                                resource: wgpu::BindingResource::Sampler(&self.text_sampler),
+                            },
+                        ],
+                    });
+        
+                    let (vertex_buffer, vertex_count) =
+                        self.create_text_vertex_buffer(text_width, text_height);
+        
+                    if let Some(object) = self.text_objects.get_mut(&id) {
+                        object.text_texture = text_texture;
+                        object.text_bind_group = text_bind_group;
+                        object.vertex_buffer = vertex_buffer;
+                        object.vertex_count = vertex_count;
+                        object.revision = text.revision();
+                    }
                 }
-            }
-    
-            if let Some(object) = self.text_objects.get_mut(&id) {
-                let uniforms = Self::text_uniforms(text);
-    
-                self.queue
-                    .write_buffer(&object.uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
-    
-                object.text = text.clone();
-            }
-        }
+        
+                if let Some(object) = self.text_objects.get_mut(&id) {
+                    let uniforms = Self::text_uniforms(text);
+        
+                    self.queue
+                        .write_buffer(&object.uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
+        
+                    object.text = text.clone();
+                }
+    }
 }
