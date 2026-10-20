@@ -17,6 +17,21 @@ mod text_renderer;
 pub use self::particle_renderer::ParticleInstance;
 
 // ============================================================
+// TEXT OBJECT
+// ============================================================
+
+pub struct TextObject {
+    pub text: Text,
+    pub uniform_buffer: wgpu::Buffer,
+    pub uniform_bind_group: wgpu::BindGroup,
+    pub text_texture: wgpu::Texture,
+    pub text_bind_group: wgpu::BindGroup,
+    pub vertex_buffer: wgpu::Buffer,
+    pub vertex_count: u32,
+    pub revision: u64,
+}
+
+// ============================================================
 // RENDER OBJECT
 // ============================================================
 
