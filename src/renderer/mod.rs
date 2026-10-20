@@ -176,7 +176,7 @@ impl Renderer {
                 ],
             });
 
-        let shader_source = include_str!("shader.wgsl");
+        let shader_source = include_str!("../shader.wgsl");
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("East Engine Shader"),
