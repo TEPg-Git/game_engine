@@ -95,8 +95,9 @@ fn vs_particle(
     );
     let side = vec2<f32>(-direction.y, direction.x);
     let speed_factor = clamp(speed / 0.3, 0.0, 1.0);
-    let trail_length = mix(0.003, 0.038, speed_factor);
-    let width = 0.003;
+    // Longer trails at higher speeds, while keeping slow particles compact.
+    let trail_length = mix(0.008, 0.065, speed_factor);
+    let width = mix(0.0035, 0.0055, speed_factor);
     let along = (tex_coords.x - 1.0) * trail_length;
     let across = (tex_coords.y - 0.5) * width;
     var world_position = particle_position + direction * along + side * across;
@@ -128,12 +129,19 @@ fn fs_particle(vertex: VertexOutput) -> @location(0) vec4<f32> {
     let uv = vertex.tex_coords;
     let transverse = (uv.y - 0.5) * 2.0;
     let tail_distance = max(0.0, 0.92 - uv.x);
-    let tail_fade = exp(-tail_distance * mix(3.0, 5.5, vertex.speed));
-    let transverse_fade = exp(-transverse * transverse * 4.0);
-    let trail = tail_fade * transverse_fade * mix(0.18, 0.42, vertex.speed);
+    // Broad low-intensity halo keeps the glow visible without hiding fine detail.
+    let tail_fade = exp(-tail_distance * mix(2.2, 3.8, vertex.speed));
+    let soft_halo = exp(-transverse * transverse * 1.8);
+    let narrow_streak = exp(-transverse * transverse * 7.0);
+    let trail = tail_fade * (soft_halo * 0.20 + narrow_streak * 0.55)
+        * mix(0.24, 0.52, vertex.speed);
     let head_x = (uv.x - 0.92) * 18.0;
-    let head = exp(-head_x * head_x) * exp(-transverse * transverse * 16.0);
-    let glow_alpha = clamp(trail + head, 0.0, 1.0) * vertex.color.a;
-    let emission = 0.45 + trail * 1.2 + head * 2.0;
+    let head_halo = exp(-head_x * head_x * 0.22)
+        * exp(-transverse * transverse * 2.2);
+    let hot_core = exp(-head_x * head_x * 1.8)
+        * exp(-transverse * transverse * 18.0);
+    let glow_alpha = clamp(trail + head_halo * 0.30 + hot_core * 0.85, 0.0, 1.0)
+        * vertex.color.a;
+    let emission = 0.55 + trail * 1.35 + head_halo * 0.55 + hot_core * 2.0;
     return vec4<f32>(vertex.color.rgb * emission, glow_alpha);
 }
