@@ -3,12 +3,13 @@
 pub struct ParticleInstance {
     pub(crate) position: [f32; 2],
     pub(crate) color: [f32; 4],
+    pub(crate) velocity: [f32; 2],
 }
 
 impl ParticleInstance {
     pub(crate) fn layout() -> wgpu::VertexBufferLayout<'static> {
-        const ATTRIBUTES: [wgpu::VertexAttribute; 2] =
-            wgpu::vertex_attr_array![2 => Float32x2, 3 => Float32x4];
+        const ATTRIBUTES: [wgpu::VertexAttribute; 3] =
+            wgpu::vertex_attr_array![2 => Float32x2, 3 => Float32x4, 4 => Float32x2];
 
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<ParticleInstance>() as wgpu::BufferAddress,
@@ -17,7 +18,11 @@ impl ParticleInstance {
         }
     }
 
-    pub(crate) fn from_position_color(position: [f32; 2], color: [f32; 4]) -> Self {
-        Self { position, color }
+    pub(crate) fn from_position_color(
+        position: [f32; 2],
+        color: [f32; 4],
+        velocity: [f32; 2],
+    ) -> Self {
+        Self { position, color, velocity }
     }
 }

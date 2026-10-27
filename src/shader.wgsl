@@ -45,6 +45,9 @@ struct VertexOutput {
 
     @location(1)
     color: vec4<f32>,
+
+    @location(2)
+    speed: f32,
 };
 
 
@@ -70,6 +73,7 @@ fn vs_main(vertex: VertexInput) -> VertexOutput {
     output.position = vec4<f32>(position, 0.0, 1.0);
     output.tex_coords = vertex.tex_coords;
     output.color = vec4<f32>(1.0, 1.0, 1.0, 1.0);
+    output.speed = 0.0;
     return output;
 }
 
@@ -80,14 +84,28 @@ fn vs_particle(
     @location(1) tex_coords: vec2<f32>,
     @location(2) particle_position: vec2<f32>,
     @location(3) particle_color: vec4<f32>,
+    @location(4) particle_velocity: vec2<f32>,
 ) -> VertexOutput {
     var output: VertexOutput;
-    var world_position = position + particle_position;
+    let speed = length(particle_velocity);
+    let direction = select(
+        vec2<f32>(1.0, 0.0),
+        particle_velocity / max(speed, 0.00001),
+        speed > 0.00001
+    );
+    let side = vec2<f32>(-direction.y, direction.x);
+    let speed_factor = clamp(speed / 0.3, 0.0, 1.0);
+    let trail_length = mix(0.003, 0.038, speed_factor);
+    let width = 0.003;
+    let along = (tex_coords.x - 1.0) * trail_length;
+    let across = (tex_coords.y - 0.5) * width;
+    var world_position = particle_position + direction * along + side * across;
     world_position -= camera.position;
     world_position *= camera.zoom;
     output.position = vec4<f32>(world_position, 0.0, 1.0);
     output.tex_coords = tex_coords;
-    output.color=particle_color;
+    output.color = particle_color;
+    output.speed = speed_factor;
     return output;
 }
 
@@ -102,3 +120,20 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
     let texture_color = textureSample(sprite_texture, sprite_sampler, vertex.tex_coords);
     return texture_color * uniforms.color * vertex.color;
     }
+
+
+// Analytic particle glow: soft, speed-sensitive streak plus a compact hot core.
+@fragment
+fn fs_particle(vertex: VertexOutput) -> @location(0) vec4<f32> {
+    let uv = vertex.tex_coords;
+    let transverse = (uv.y - 0.5) * 2.0;
+    let tail_distance = max(0.0, 0.92 - uv.x);
+    let tail_fade = exp(-tail_distance * mix(3.0, 5.5, vertex.speed));
+    let transverse_fade = exp(-transverse * transverse * 4.0);
+    let trail = tail_fade * transverse_fade * mix(0.18, 0.42, vertex.speed);
+    let head_x = (uv.x - 0.92) * 18.0;
+    let head = exp(-head_x * head_x) * exp(-transverse * transverse * 16.0);
+    let glow_alpha = clamp(trail + head, 0.0, 1.0) * vertex.color.a;
+    let emission = 0.45 + trail * 1.2 + head * 2.0;
+    return vec4<f32>(vertex.color.rgb * emission, glow_alpha);
+}

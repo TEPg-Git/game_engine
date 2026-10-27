@@ -256,7 +256,7 @@ impl Renderer {
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
-                entry_point: Some("fs_main"),
+                entry_point: Some("fs_particle"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
@@ -447,7 +447,7 @@ impl Renderer {
             .particles
             .iter()
             .map(|particle| {
-                ParticleInstance::from_position_color(particle.position, particle.color)
+                ParticleInstance::from_position_color(particle.position, particle.color, particle.velocity)
             })
             .collect();
 
