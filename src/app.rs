@@ -15,10 +15,12 @@ pub struct App {
  window: Option<Arc<Window>>, renderer: Option<Renderer>, game_state: GameState,
  time: Time, diagnostics: Diagnostics, resizing: bool, last_resize: Option<Instant>,
  settings_panel_open: bool, selected_setting: usize, settings_overlay: crate::text::Text,
+ fps_display_enabled: bool, glow_enabled: bool, trails_enabled: bool,
 }
 impl App {
- pub fn new()->Self { Self { window:None, renderer:None, game_state:GameState::new(), time:Time::new(), diagnostics:Diagnostics::new(), resizing:false, last_resize:None, settings_panel_open:false, selected_setting:0, settings_overlay: {
-  let mut text = crate::text::Text::new("F1: Open particle settings", 21.0);
+ pub fn new()->Self { Self { window:None, renderer:None, game_state:GameState::new(), time:Time::new(), diagnostics:Diagnostics::new(), resizing:false, last_resize:None, settings_panel_open:false, selected_setting:0, fps_display_enabled:true, glow_enabled:true, trails_enabled:true, settings_overlay: {
+  let mut text = crate::text::Text::new("", 21.0);
+  text.set_visible(false);
   text.set_position(-0.62, 0.60);
   text.set_color(0.72, 0.94, 1.0, 1.0);
   text.set_line_spacing(1.35);
@@ -36,6 +38,9 @@ impl App {
    format!("Field grid: {} x {}", s.field_resolution, s.field_resolution),
    format!("Particle size: {:.4}", s.particle_size),
    format!("Field update: {:.2} s", s.field_update_interval),
+   format!("FPS display: {}", if self.fps_display_enabled { "ON" } else { "OFF" }),
+   format!("Particle glow: {}", if self.glow_enabled { "ON" } else { "OFF" }),
+   format!("Particle trails: {}", if self.trails_enabled { "ON" } else { "OFF" }),
   ];
 
   let mut content = if self.settings_panel_open {
@@ -43,7 +48,7 @@ impl App {
     "+--------------------------------------\n|  PARTICLE SETTINGS                   |\n|  TAB select  LEFT/RIGHT adjust       |\n|                                      |\n"
    )
   } else {
-   String::from("F1: Open particle settings\n")
+   String::new()
   };
 
   if self.settings_panel_open {
@@ -55,6 +60,7 @@ impl App {
   }
 
   self.settings_overlay.set_content(&content);
+  self.settings_overlay.set_visible(self.settings_panel_open);
   self.settings_overlay.set_position(-0.62, 0.60);
   self.settings_overlay.set_color(0.72, 0.94, 1.0, 1.0);
   self.settings_overlay.set_line_spacing(1.35);
@@ -69,7 +75,11 @@ impl App {
    SettingAction::Reset=>{self.game_state.particle_settings=ParticleSettings::default();self.game_state.apply_particle_settings();},
    SettingAction::Decrease|SettingAction::Increase=>{input::adjust(&mut self.game_state.particle_settings,self.selected_setting,action==SettingAction::Increase);self.game_state.apply_particle_settings();}
   }
-  if let Some(renderer)=&mut self.renderer { renderer.set_particle_size(self.game_state.particle_settings.particle_size); }
+  if let Some(renderer)=&mut self.renderer {
+   renderer.set_particle_size(self.game_state.particle_settings.particle_size);
+   renderer.set_particle_effects(self.glow_enabled, self.trails_enabled);
+  }
+  self.diagnostics.fps_text.set_visible(self.fps_display_enabled);
   self.refresh_settings_overlay();
  }
  fn update(&mut self){ self.time.update(); self.diagnostics.update(&self.time); self.game_state.update(self.time.delta_time()); }
@@ -77,6 +87,8 @@ impl App {
  fn initialize_scene(&mut self, renderer:&mut Renderer) {
   let sprite=Sprite::from_file(&renderer.device,&renderer.queue,"assets/textures/Ball.png",[0.01,0.01]);
   renderer.initialize_particle_resources(&sprite); renderer.set_particle_size(self.game_state.particle_settings.particle_size);
+  renderer.set_particle_effects(self.glow_enabled, self.trails_enabled);
+  self.diagnostics.fps_text.set_visible(self.fps_display_enabled);
   for entity in &self.game_state.entities { renderer.create_render_object(entity); }
   renderer.create_text_object(0,self.game_state.text.clone()); renderer.create_text_object(1,self.game_state.score_text.clone());
   renderer.create_text_object(2,self.diagnostics.fps_text.clone()); renderer.create_text_object(3,self.diagnostics.frame_time_ms_text.clone());
@@ -99,9 +111,22 @@ impl ApplicationHandler for App {
      if key==KeyCode::Escape&&pressed{event_loop.exit();return;}
      if pressed&&!event.repeat {
       if key==KeyCode::KeyF { self.toggle_fullscreen(); }
-      else if key==KeyCode::Tab&&self.settings_panel_open { self.selected_setting=(self.selected_setting+1)%7; self.refresh_settings_overlay(); }
+      else if key==KeyCode::Tab&&self.settings_panel_open { self.selected_setting=(self.selected_setting+1)%10; self.refresh_settings_overlay(); }
       else if key==KeyCode::ArrowLeft||key==KeyCode::ArrowDown||key==KeyCode::ArrowRight||key==KeyCode::ArrowUp||key==KeyCode::KeyR {
-       if self.settings_panel_open { if let Some(action)=input::action_for_key(key){self.handle_settings_action(action);} }
+       if self.settings_panel_open {
+        if self.selected_setting >= 7 && key != KeyCode::KeyR {
+         let enabled = key==KeyCode::ArrowRight || key==KeyCode::ArrowUp;
+         match self.selected_setting {
+          7 => self.fps_display_enabled = enabled,
+          8 => self.glow_enabled = enabled,
+          9 => self.trails_enabled = enabled,
+          _ => {}
+         }
+         if let Some(renderer)=&mut self.renderer { renderer.set_particle_effects(self.glow_enabled, self.trails_enabled); }
+         self.diagnostics.fps_text.set_visible(self.fps_display_enabled);
+         self.refresh_settings_overlay();
+        } else if let Some(action)=input::action_for_key(key){self.handle_settings_action(action);}
+       }
       } else if key==KeyCode::F1 { self.handle_settings_action(SettingAction::TogglePanel); }
      }
     }
