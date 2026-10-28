@@ -298,9 +298,10 @@ impl Renderer {
             mapped_at_creation: false,
         });
 
-        // Match the current particle sprite size (0.01 x 0.01 world units).
-        // Each instance supplies only its center position.
-        let particle_vertices = Self::quad_vertices(0.0015, 0.0015);
+        // Leave enough quad area for the velocity-oriented trail and glow.
+        // The shader contracts the visible profile analytically, so this larger
+        // carrier quad does not make every particle a solid rectangle.
+        let particle_vertices = Self::quad_vertices(0.02, 0.02);
         let particle_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Shared Particle Vertex Buffer"),
             contents: bytemuck::cast_slice(&particle_vertices),
