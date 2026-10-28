@@ -115,13 +115,10 @@ pub struct ParticleSystem {
 }
 
 impl ParticleSystem {
-    pub fn new() -> Self {
-        let mut rng = rand::rng();
-        const PARTICLE_COUNT: usize = 100000;
-        let field_scale = 2.0;
-
-        Self {
-            particles: (0..PARTICLE_COUNT)
+    pub fn new() -> Self { Self::from_settings(&crate::settings::ParticleSettings::default()) }
+    pub fn from_settings(settings: &crate::settings::ParticleSettings) -> Self {
+        let mut rng = rand::rng(); let mut settings=settings.clone(); settings.clamp(); let field_scale=settings.field_scale;
+        Self { particles: (0..settings.particle_count)
                 .map(|_| {
                     Particle::new(
                         [rng.random_range(-0.5..=0.5), rng.random_range(-0.5..=0.5)],
@@ -131,17 +128,16 @@ impl ParticleSystem {
                     )
                 })
                 .collect(),
-            flow_field: FlowField::new(64, 64, field_scale, 9678498),
-            flow_speed: 0.3,
-            flow_steering: 2.0,
-            elapsed_time: 0.0,
-            // 20 updates/sec by default; tune this down if field generation costs too much.
-            field_update_interval: 0.5,
+            flow_field: FlowField::new(settings.field_resolution,settings.field_resolution,field_scale,9678498), flow_speed:settings.flow_speed,flow_steering:settings.flow_steering,elapsed_time:0.0,field_update_interval:settings.field_update_interval,
             field_update_accumulator: 0.0,
             field_scale,
         }
     }
-
+    pub fn apply_settings(&mut self, settings: &crate::settings::ParticleSettings) {
+        let mut s=settings.clone();s.clamp();let target=s.particle_count;
+        if target<self.particles.len(){self.particles.truncate(target)}else if target>self.particles.len(){let mut rng=rand::rng();self.particles.reserve(target-self.particles.len());while self.particles.len()<target{self.particles.push(Particle::new([rng.random_range(-0.5..=0.5),rng.random_range(-0.5..=0.5)],[0.0,0.0],[1.0,1.0,1.0,1.0],rng.random_range(2.0..=10.0)));}}
+        self.flow_speed=s.flow_speed;self.flow_steering=s.flow_steering;self.field_update_interval=s.field_update_interval;self.field_scale=s.field_scale;self.flow_field=FlowField::new(s.field_resolution,s.field_resolution,s.field_scale,9678498);self.field_update_accumulator=0.0;self.flow_field.generate_at_time(self.field_scale,self.elapsed_time);
+    }
     pub fn update(&mut self, dt: f32) {
         let dt = dt.max(0.0);
         self.elapsed_time += dt;
