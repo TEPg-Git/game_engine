@@ -75,21 +75,7 @@ fn vs_main(vertex: VertexInput) -> VertexOutput {
 
 // Instanced particles use the same shared quad; each instance supplies its center.
 @vertex
-fn vs_particle(
-    @location(0) position: vec2<f32>,
-    @location(1) tex_coords: vec2<f32>,
-    @location(2) particle_position: vec2<f32>,
-    @location(3) particle_color: vec4<f32>,
-) -> VertexOutput {
-    var output: VertexOutput;
-    var world_position = position + particle_position;
-    world_position -= camera.position;
-    world_position *= camera.zoom;
-    output.position = vec4<f32>(world_position, 0.0, 1.0);
-    output.tex_coords = tex_coords;
-    output.color=particle_color;
-    return output;
-}
+fn vs_particle(@location(0) position:vec2<f32>,@location(1) tex_coords:vec2<f32>,@location(2) particle_position:vec2<f32>,@location(3) particle_color:vec4<f32>)->VertexOutput{var output:VertexOutput;var world_position=position*uniforms.scale.xy+particle_position;world_position=(world_position-camera.position)*camera.zoom;output.position=vec4<f32>(world_position,0.0,1.0);output.tex_coords=tex_coords;output.color=particle_color;return output;}
 
 @group(1) @binding(0)
 var sprite_texture: texture_2d<f32>;
