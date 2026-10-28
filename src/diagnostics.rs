@@ -20,13 +20,13 @@ impl Diagnostics {
             display_timer: Duration::ZERO,
             fps_text: {
                 let mut text = Text::new("FPS: 0", 24.0);
-                text.set_position(-0.9, 0.9);
-                text.set_alignment(TextAlignment::Left);
+                text.set_position(0.78, 0.90);
+                text.set_alignment(TextAlignment::Right);
                 text
             },
             frame_time_ms_text: {
                 let mut text = Text::new("Frame: 0.00 ms", 24.0);
-                text.set_position(-0.9, 0.8);
+                text.set_position(0.78, 0.82);
                 text.set_alignment(TextAlignment::Left);
                 text
             },
