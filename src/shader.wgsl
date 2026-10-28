@@ -94,11 +94,13 @@ fn vs_particle(
         speed > 0.00001
     );
     let side = vec2<f32>(-direction.y, direction.x);
-    // Keep trails visible even while particles are accelerating from rest.
-    let speed_factor = clamp(speed / 0.18, 0.25, 1.0);
+    // The base quad is 0.003 world units wide. Scale the analytic trail from
+    // that known size rather than using tiny absolute world-space dimensions.
+    let speed_factor = clamp(speed / 0.30, 0.15, 1.0);
     let size_factor = clamp(uniforms.scale.x, 0.333, 6.667);
-    let trail_length = mix(0.035, 0.130, speed_factor) * size_factor;
-    let width = mix(0.0060, 0.0120, speed_factor) * size_factor;
+    let base_size = 0.0030 * size_factor;
+    let trail_length = base_size * mix(8.0, 30.0, speed_factor);
+    let width = base_size * mix(3.0, 7.0, speed_factor);
     let along = (tex_coords.x - 1.0) * trail_length;
     let across = (tex_coords.y - 0.5) * width;
     var world_position = particle_position + direction * along + side * across;
@@ -127,31 +129,32 @@ fn fs_main(vertex: VertexOutput) -> @location(0) vec4<f32> {
 // Analytic particle glow: soft, speed-sensitive streak plus a compact hot core.
 @fragment
 fn fs_particle(vertex: VertexOutput) -> @location(0) vec4<f32> {
-    let uv = vertex.tex_coords;
-    let transverse = (uv.y - 0.5) * 2.0;
-    let tail_distance = max(0.0, 0.92 - uv.x);
-    // Layered aurora trail: broad haze, defined filament, and a bright leading core.
-    let tail_fade = exp(-tail_distance * mix(1.2, 2.6, vertex.speed));
-    let soft_halo = exp(-transverse * transverse * 0.85);
-    let narrow_streak = exp(-transverse * transverse * 5.5);
-    let filament = exp(-transverse * transverse * 18.0);
-    let trail = tail_fade
-        * (soft_halo * 0.42 + narrow_streak * 0.72 + filament * 0.36)
-        * mix(0.45, 0.90, vertex.speed);
+    // uv.x=1 is the particle head; uv.x=0 is the tail end.
+    let transverse = (vertex.tex_coords.y - 0.5) * 2.0;
+    let tail_distance = 1.0 - vertex.tex_coords.x;
 
-    let head_x = (uv.x - 0.92) * 18.0;
-    let head_halo = exp(-head_x * head_x * 0.12)
-        * exp(-transverse * transverse * 1.2);
-    let hot_core = exp(-head_x * head_x * 1.3)
-        * exp(-transverse * transverse * 14.0);
-    let rim = exp(-transverse * transverse * 2.8)
-        * smoothstep(0.35, 0.95, abs(transverse));
+    // Keep the trail readable with standard alpha blending on SDR swapchains:
+    // RGB values above 1.0 do not produce bloom without an HDR post-process.
+    let tail_envelope = exp(-tail_distance * mix(2.0, 0.75, vertex.speed));
+    let broad_halo = exp(-transverse * transverse * 2.0);
+    let streak = exp(-transverse * transverse * 8.0);
+    let filament = exp(-transverse * transverse * 24.0);
+    let trail = tail_envelope
+        * (broad_halo * 0.28 + streak * 0.42 + filament * 0.55)
+        * mix(0.45, 0.85, vertex.speed);
 
-    // A restrained cyan/ice highlight gives the stream a prismatic edge.
-    let spectral_mix = clamp(rim * 0.20 + hot_core * 0.12, 0.0, 0.28);
-    let spectral_color = mix(vertex.color.rgb, vec3<f32>(0.48, 0.88, 1.0), spectral_mix);
-    let glow_alpha = clamp(trail + head_halo * 0.42 + hot_core * 0.95, 0.0, 1.0)
+    let head_x = (vertex.tex_coords.x - 0.91) * 13.0;
+    let head_halo = exp(-head_x * head_x * 0.22)
+        * exp(-transverse * transverse * 2.0);
+    let hot_core = exp(-head_x * head_x * 1.0)
+        * exp(-transverse * transverse * 18.0);
+    let rim = exp(-transverse * transverse * 3.5)
+        * smoothstep(0.20, 0.95, abs(transverse));
+
+    let spectral_mix = clamp(rim * 0.28 + hot_core * 0.18, 0.0, 0.42);
+    let spectral_color = mix(vertex.color.rgb, vec3<f32>(0.45, 0.90, 1.0), spectral_mix);
+    let alpha = clamp(trail + head_halo * 0.62 + hot_core, 0.0, 0.94)
         * vertex.color.a;
-    let emission = 0.72 + trail * 1.8 + head_halo * 1.0 + hot_core * 2.8;
-    return vec4<f32>(spectral_color * emission, glow_alpha);
+    let brightness = clamp(0.65 + trail * 0.55 + head_halo * 0.30 + hot_core * 0.60, 0.0, 1.0);
+    return vec4<f32>(spectral_color * brightness, alpha);
 }
