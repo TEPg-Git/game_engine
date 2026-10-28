@@ -40,18 +40,18 @@ impl App {
 
   let mut content = if self.settings_panel_open {
    String::from(
-    "+--------------------------------------\\n|  PARTICLE SETTINGS                   |\\n|  TAB select  LEFT/RIGHT adjust       |\\n|                                      |\\n"
+    "+--------------------------------------\n|  PARTICLE SETTINGS                   |\n|  TAB select  LEFT/RIGHT adjust       |\n|                                      |\n"
    )
   } else {
-   String::from("F1: Open particle settings\\n")
+   String::from("F1: Open particle settings\n")
   };
 
   if self.settings_panel_open {
    for (i, label) in labels.iter().enumerate() {
     let marker = if i == self.selected_setting { ">" } else { " " };
-    content.push_str(&format!("| {} {}\\n", marker, label));
+    content.push_str(&format!("| {} {}\n", marker, label));
    }
-   content.push_str("|                                      |\\n|  R Reset   F Fullscreen   F1 Close   |\\n+--------------------------------------+");
+   content.push_str("|                                      |\n|  R Reset   F Fullscreen   F1 Close   |\n+--------------------------------------+");
   }
 
   self.settings_overlay.set_content(&content);
