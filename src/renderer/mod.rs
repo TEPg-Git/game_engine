@@ -298,9 +298,8 @@ impl Renderer {
             mapped_at_creation: false,
         });
 
-        // Leave enough quad area for the velocity-oriented trail and glow.
-        // The shader contracts the visible profile analytically, so this larger
-        // carrier quad does not make every particle a solid rectangle.
+        // Large carrier quad for the shader-generated glow/trail. The vertex
+        // shader contracts it to the analytic streak dimensions before rasterizing.
         let particle_vertices = Self::quad_vertices(0.02, 0.02);
         let particle_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Shared Particle Vertex Buffer"),
