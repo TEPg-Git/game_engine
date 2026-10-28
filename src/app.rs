@@ -17,15 +17,52 @@ pub struct App {
  settings_panel_open: bool, selected_setting: usize, settings_overlay: crate::text::Text,
 }
 impl App {
- pub fn new()->Self { Self { window:None, renderer:None, game_state:GameState::new(), time:Time::new(), diagnostics:Diagnostics::new(), resizing:false, last_resize:None, settings_panel_open:false, selected_setting:0, settings_overlay:crate::text::Text::new("F1: Particle settings",15.0) } }
+ pub fn new()->Self { Self { window:None, renderer:None, game_state:GameState::new(), time:Time::new(), diagnostics:Diagnostics::new(), resizing:false, last_resize:None, settings_panel_open:false, selected_setting:0, settings_overlay: {
+  let mut text = crate::text::Text::new("F1: Open particle settings", 21.0);
+  text.set_position(-0.62, 0.60);
+  text.set_color(0.72, 0.94, 1.0, 1.0);
+  text.set_line_spacing(1.35);
+  text.set_max_width(Some(600.0));
+  text
+ } } }
  fn toggle_fullscreen(&mut self) { let Some(window)=&self.window else{return}; self.resizing=true; self.last_resize=Some(Instant::now()); let fullscreen=if window.fullscreen().is_some(){None}else{Some(Fullscreen::Borderless(window.current_monitor()))}; window.set_fullscreen(fullscreen); }
  fn refresh_settings_overlay(&mut self) {
-  let s=&self.game_state.particle_settings;
-  let labels=[format!("Particle count: {}",s.particle_count),format!("Flow speed: {:.2}",s.flow_speed),format!("Steering: {:.1}",s.flow_steering),format!("Field scale: {:.2}",s.field_scale),format!("Field grid: {} x {}",s.field_resolution,s.field_resolution),format!("Particle size: {:.4}",s.particle_size),format!("Field update: {:.2}s",s.field_update_interval)];
-  let mut content=if self.settings_panel_open { String::from("PARTICLE SETTINGS [F1 close]\nTAB select / LEFT RIGHT adjust\n") } else { String::from("F1: Particle settings\n") };
-  if self.settings_panel_open { for (i,label) in labels.iter().enumerate(){ content.push_str(if i==self.selected_setting {"> "} else {"  "}); content.push_str(label); content.push('\n'); } content.push_str("R reset | F fullscreen"); }
-  self.settings_overlay.set_content(&content); self.settings_overlay.position=[-0.95,0.90]; self.settings_overlay.color=[0.72,0.94,1.0,1.0];
-  if let Some(renderer)=&mut self.renderer { renderer.update_text_object(4,&self.settings_overlay); }
+  let s = &self.game_state.particle_settings;
+  let labels = [
+   format!("Particle count: {}", s.particle_count),
+   format!("Flow speed: {:.2}", s.flow_speed),
+   format!("Steering: {:.1}", s.flow_steering),
+   format!("Field scale: {:.2}", s.field_scale),
+   format!("Field grid: {} x {}", s.field_resolution, s.field_resolution),
+   format!("Particle size: {:.4}", s.particle_size),
+   format!("Field update: {:.2} s", s.field_update_interval),
+  ];
+
+  let mut content = if self.settings_panel_open {
+   String::from(
+    "+--------------------------------------\\n|  PARTICLE SETTINGS                   |\\n|  TAB select  LEFT/RIGHT adjust       |\\n|                                      |\\n"
+   )
+  } else {
+   String::from("F1: Open particle settings\\n")
+  };
+
+  if self.settings_panel_open {
+   for (i, label) in labels.iter().enumerate() {
+    let marker = if i == self.selected_setting { ">" } else { " " };
+    content.push_str(&format!("| {} {}\\n", marker, label));
+   }
+   content.push_str("|                                      |\\n|  R Reset   F Fullscreen   F1 Close   |\\n+--------------------------------------+");
+  }
+
+  self.settings_overlay.set_content(&content);
+  self.settings_overlay.set_position(-0.62, 0.60);
+  self.settings_overlay.set_color(0.72, 0.94, 1.0, 1.0);
+  self.settings_overlay.set_line_spacing(1.35);
+  self.settings_overlay.set_max_width(Some(600.0));
+
+  if let Some(renderer) = &mut self.renderer {
+   renderer.update_text_object(4, &self.settings_overlay);
+  }
  }
  fn handle_settings_action(&mut self, action:SettingAction) {
   match action { SettingAction::TogglePanel=>self.settings_panel_open=!self.settings_panel_open,
