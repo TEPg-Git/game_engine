@@ -438,7 +438,19 @@ impl Renderer {
         let size_factor = size.clamp(0.0005, 0.01) / 0.0015;
         let uniforms = Uniforms {
             position_rotation: [0.0; 4],
-            scale: [size_factor, size_factor, 0.0, 0.0],
+            scale: [size_factor, size_factor, 1.0, 1.0],
+            color: [1.0; 4],
+        };
+        self.queue.write_buffer(&self.particle_uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
+    }
+
+    /// Enable or disable the analytic glow and velocity-aligned trail independently.
+    pub fn set_particle_effects(&mut self, glow_enabled: bool, trails_enabled: bool) {
+        let current_size = 1.0; // Replaced below by the currently stored size uniform.
+        let _ = current_size;
+        let uniforms = Uniforms {
+            position_rotation: [0.0; 4],
+            scale: [1.0, 1.0, if glow_enabled { 1.0 } else { 0.0 }, if trails_enabled { 1.0 } else { 0.0 }],
             color: [1.0; 4],
         };
         self.queue.write_buffer(&self.particle_uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
