@@ -80,6 +80,7 @@ impl App {
    renderer.set_particle_effects(self.glow_enabled, self.trails_enabled);
   }
   self.diagnostics.fps_text.set_visible(self.fps_display_enabled);
+  self.diagnostics.frame_time_ms_text.set_visible(self.fps_display_enabled);
   self.refresh_settings_overlay();
  }
  fn update(&mut self){ self.time.update(); self.diagnostics.update(&self.time); self.game_state.update(self.time.delta_time()); }
@@ -89,6 +90,7 @@ impl App {
   renderer.initialize_particle_resources(&sprite); renderer.set_particle_size(self.game_state.particle_settings.particle_size);
   renderer.set_particle_effects(self.glow_enabled, self.trails_enabled);
   self.diagnostics.fps_text.set_visible(self.fps_display_enabled);
+  self.diagnostics.frame_time_ms_text.set_visible(self.fps_display_enabled);
   for entity in &self.game_state.entities { renderer.create_render_object(entity); }
   renderer.create_text_object(0,self.game_state.text.clone()); renderer.create_text_object(1,self.game_state.score_text.clone());
   renderer.create_text_object(2,self.diagnostics.fps_text.clone()); renderer.create_text_object(3,self.diagnostics.frame_time_ms_text.clone());
@@ -124,6 +126,7 @@ impl ApplicationHandler for App {
          }
          if let Some(renderer)=&mut self.renderer { renderer.set_particle_effects(self.glow_enabled, self.trails_enabled); }
          self.diagnostics.fps_text.set_visible(self.fps_display_enabled);
+         self.diagnostics.frame_time_ms_text.set_visible(self.fps_display_enabled);
          self.refresh_settings_overlay();
         } else if let Some(action)=input::action_for_key(key){self.handle_settings_action(action);}
        }
