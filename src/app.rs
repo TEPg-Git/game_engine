@@ -1,6 +1,8 @@
 use crate::diagnostics::Diagnostics;
 use crate::renderer::Renderer;
 use crate::sprite::Sprite;
+use crate::input::{self,SettingAction};
+use crate::settings::ParticleSettings;
 use crate::state::GameState;
 use crate::time::Time;
 
@@ -23,6 +25,8 @@ pub struct App {
     diagnostics: Diagnostics,
     resizing: bool,
     last_resize: Option<Instant>,
+    settings_panel_open: bool,
+    selected_setting: usize,
 }
 
 impl App {
@@ -35,6 +39,8 @@ impl App {
             diagnostics: Diagnostics::new(),
             resizing: false,
             last_resize: None,
+            settings_panel_open:false,
+            selected_setting:0,
         }
     }
 
@@ -55,6 +61,8 @@ impl App {
         window.set_fullscreen(fullscreen);
     }
 
+    fn refresh_settings_overlay(&mut self){let s=&self.game_state.particle_settings;let labels=[format!("Particle count: {}",s.particle_count),format!("Flow speed: {:.2}",s.flow_speed),format!("Steering: {:.1}",s.flow_steering),format!("Field scale: {:.2}",s.field_scale),format!("Field grid: {} x {}",s.field_resolution,s.field_resolution),format!("Particle size: {:.4}",s.particle_size),format!("Field update: {:.2}s",s.field_update_interval)];let mut c=if self.settings_panel_open{String::from("PARTICLE SETTINGS [F1 close]\\nTAB select / LEFT RIGHT adjust\\n")}else{String::from("F1: Particle settings\\n")};if self.settings_panel_open{for(i,l)in labels.iter().enumerate(){c.push_str(if i==self.selected_setting{"> "}else{"  "});c.push_str(l);c.push('\\n')}c.push_str("R reset | F fullscreen")}if let Some(r)=&mut self.renderer{let mut t=crate::text::Text::new(&c,15.0);t.position=[-0.95,0.90];t.color=[0.72,0.94,1.0,1.0];r.update_text_object(4,&t)}}
+    fn handle_settings_action(&mut self,a:SettingAction){match a{SettingAction::TogglePanel=>self.settings_panel_open=!self.settings_panel_open,SettingAction::Reset=>{self.game_state.particle_settings=ParticleSettings::default();self.game_state.apply_particle_settings()},SettingAction::Decrease|SettingAction::Increase=>{input::adjust(&mut self.game_state.particle_settings,self.selected_setting,a==SettingAction::Increase);self.game_state.apply_particle_settings()}}if let Some(r)=&mut self.renderer{r.set_particle_size(self.game_state.particle_settings.particle_size)}self.refresh_settings_overlay()}
     fn update(&mut self) {
         self.time.update();
         self.diagnostics.update(&self.time);
@@ -95,6 +103,7 @@ impl App {
         renderer.create_text_object(1, self.game_state.score_text.clone());
         renderer.create_text_object(2, self.diagnostics.fps_text.clone());
         renderer.create_text_object(3, self.diagnostics.frame_time_ms_text.clone());
+        renderer.create_text_object(4, crate::text::Text::new("F1: Particle settings",15.0));
     }
 }
 
@@ -149,9 +158,8 @@ impl ApplicationHandler for App {
                         return;
                     }
 
-                    if key_code == KeyCode::KeyF && pressed && !event.repeat {
-                        self.toggle_fullscreen();
-                    }
+                    if key_code == KeyCode::KeyF && pressed && !event.repeat { self.toggle_fullscreen(); }
+                    if pressed && !event.repeat { if key_code==KeyCode::Tab && self.settings_panel_open {self.selected_setting=(self.selected_setting+1)%7;self.refresh_settings_overlay()} else if let Some(a)=input::action_for_key(key_code){self.handle_settings_action(a)} }
                 }
             }
 
