@@ -256,7 +256,7 @@ impl Renderer {
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
-                entry_point: Some("fs_main"),
+                entry_point: Some("fs_particle"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
@@ -300,7 +300,7 @@ impl Renderer {
 
         // Match the current particle sprite size (0.01 x 0.01 world units).
         // Each instance supplies only its center position.
-        let particle_vertices = Self::quad_vertices(1.0, 1.0);
+        let particle_vertices = Self::quad_vertices(0.0015, 0.0015);
         let particle_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Shared Particle Vertex Buffer"),
             contents: bytemuck::cast_slice(&particle_vertices),
@@ -310,7 +310,7 @@ impl Renderer {
 
         let particle_uniforms = Uniforms {
             position_rotation: [0.0, 0.0, 0.0, 0.0],
-            scale: [0.0015, 0.0015, 0.0, 0.0],
+            scale: [1.0, 1.0, 0.0, 0.0],
             color: [1.0, 1.0, 1.0, 1.0],
         };
         let particle_uniform_buffer =
@@ -434,7 +434,15 @@ impl Renderer {
     pub fn initialize_particle_resources(&mut self, sprite: &Sprite) {
         self.particle_bind_group = Some(self.create_sprite_bind_group(sprite));
     }
-    pub fn set_particle_size(&mut self,size:f32){let size=size.clamp(0.0005,0.01);let u=Uniforms{position_rotation:[0.0;4],scale:[size,size,0.0,0.0],color:[1.0;4]};self.queue.write_buffer(&self.particle_uniform_buffer,0,bytemuck::bytes_of(&u));}
+    pub fn set_particle_size(&mut self, size: f32) {
+        let size_factor = size.clamp(0.0005, 0.01) / 0.0015;
+        let uniforms = Uniforms {
+            position_rotation: [0.0; 4],
+            scale: [size_factor, size_factor, 0.0, 0.0],
+            color: [1.0; 4],
+        };
+        self.queue.write_buffer(&self.particle_uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
+    }
     pub fn render(&mut self, state: &GameState, fps_text: &Text, frame_time_text: &Text) {
         if self.config.width == 0 || self.config.height == 0 {
             return;
@@ -448,7 +456,7 @@ impl Renderer {
             .particles
             .iter()
             .map(|particle| {
-                ParticleInstance::from_position_color(particle.position, particle.color)
+                ParticleInstance::from_position_color(particle.position, particle.color, particle.velocity)
             })
             .collect();
 
