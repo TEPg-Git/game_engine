@@ -60,9 +60,11 @@ impl ApplicationHandler for App {
     if let PhysicalKey::Code(key)=event.physical_key {
      if key==KeyCode::Escape&&pressed{event_loop.exit();return;}
      if pressed&&!event.repeat {
-      if key==KeyCode::KeyF {self.toggle_fullscreen();}
-      else if key==KeyCode::Tab&&self.settings_panel_open {self.selected_setting=(self.selected_setting+1)%7;self.refresh_settings_overlay();}
-      else if let Some(action)=input::action_for_key(key){self.handle_settings_action(action);}
+      if key==KeyCode::KeyF { self.toggle_fullscreen(); }
+      else if key==KeyCode::Tab&&self.settings_panel_open { self.selected_setting=(self.selected_setting+1)%7; self.refresh_settings_overlay(); }
+      else if key==KeyCode::ArrowLeft||key==KeyCode::ArrowDown||key==KeyCode::ArrowRight||key==KeyCode::ArrowUp||key==KeyCode::KeyR {
+       if self.settings_panel_open { if let Some(action)=input::action_for_key(key){self.handle_settings_action(action);} }
+      } else if key==KeyCode::F1 { self.handle_settings_action(SettingAction::TogglePanel); }
      }
     }
    }
