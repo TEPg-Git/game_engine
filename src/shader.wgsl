@@ -94,13 +94,12 @@ fn vs_particle(
         speed > 0.00001
     );
     let side = vec2<f32>(-direction.y, direction.x);
-    // The base quad is 0.003 world units wide. Scale the analytic trail from
-    // that known size rather than using tiny absolute world-space dimensions.
+    // Treat the particle quad as a carrier canvas. Draw a broad streak even
+    // when the configured particle size is small, while respecting size controls.
     let speed_factor = clamp(speed / 0.30, 0.15, 1.0);
     let size_factor = clamp(uniforms.scale.x, 0.333, 6.667);
-    let base_size = 0.0030 * size_factor;
-    let trail_length = base_size * mix(8.0, 30.0, speed_factor);
-    let width = base_size * mix(3.0, 7.0, speed_factor);
+    let trail_length = 0.012 * mix(0.65, 2.6, speed_factor) * size_factor;
+    let width = 0.0035 * mix(0.80, 1.7, speed_factor) * size_factor;
     let along = (tex_coords.x - 1.0) * trail_length;
     let across = (tex_coords.y - 0.5) * width;
     var world_position = particle_position + direction * along + side * across;
