@@ -1,0 +1,22 @@
+name: Rust checks
+
+on:
+  push:
+    branches: [master, dynamic-vector-fields]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+      - name: Run tests
+        run: cargo test --locked
+      - name: Check all targets
+        run: cargo check --locked --all-targets

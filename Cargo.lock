@@ -713,6 +713,7 @@ dependencies = [
  "pollster",
  "rand",
  "rand_chacha",
+ "rayon",
  "wgpu",
  "winit",
  "winres",

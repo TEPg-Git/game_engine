@@ -1,0 +1,5 @@
+/// Runtime-tunable particle and vector-field settings.
+#[derive(Clone, Debug)]
+pub struct ParticleSettings { pub particle_count: usize, pub flow_speed: f32, pub flow_steering: f32, pub field_scale: f32, pub field_resolution: usize, pub particle_size: f32, pub field_update_interval: f32 }
+impl Default for ParticleSettings { fn default() -> Self { Self { particle_count: 100_000, flow_speed: 0.3, flow_steering: 2.0, field_scale: 2.0, field_resolution: 64, particle_size: 0.0015, field_update_interval: 0.5 } } }
+impl ParticleSettings { pub const MIN_PARTICLES: usize=1_000; pub const MAX_PARTICLES: usize=1_000_000; pub fn clamp(&mut self) { self.particle_count=self.particle_count.clamp(Self::MIN_PARTICLES,Self::MAX_PARTICLES); self.flow_speed=self.flow_speed.clamp(0.0,2.0); self.flow_steering=self.flow_steering.clamp(0.0,20.0); self.field_scale=self.field_scale.clamp(0.1,12.0); self.field_resolution=self.field_resolution.clamp(8,256); self.particle_size=self.particle_size.clamp(0.0005,0.01); self.field_update_interval=self.field_update_interval.clamp(0.02,5.0); } }

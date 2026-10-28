@@ -1,24 +1,3 @@
-mod app;
-mod camera;
-mod diagnostics;
-mod entity;
-mod flow_field;
-mod graphics;
-mod input;
-mod particle;
-mod renderer;
-mod sprite;
-mod state;
-mod text;
-mod texture;
-mod time;
-mod transform;
-
-use app::App;
-use winit::event_loop::EventLoop;
-
-fn main() {
-    let event_loop = EventLoop::new().expect("Failed to create event loop");
-    let mut app = App::new();
-    event_loop.run_app(&mut app).expect("Event loop failed");
-}
+mod app; mod camera; mod diagnostics; mod entity; mod flow_field; mod graphics; mod input; mod particle; mod renderer; mod settings; mod sprite; mod state; mod text; mod texture; mod time; mod transform;
+use app::App; use winit::event_loop::EventLoop;
+fn main(){let event_loop=EventLoop::new().expect("Failed to create event loop");let mut app=App::new();event_loop.run_app(&mut app).expect("Event loop failed");}

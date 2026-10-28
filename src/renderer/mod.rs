@@ -8,43 +8,13 @@ use crate::entity::Entity;
 use crate::graphics::{CameraUniforms, Uniforms, Vertex};
 use crate::sprite::Sprite;
 use crate::state::GameState;
-use crate::text::{Text, create_text_bitmap_with_options, load_font};
+use crate::text::Text;
 
-#[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
-struct ParticleInstance {
-    position: [f32; 2],
-    color: [f32; 4],
-}
+mod particle_renderer;
+mod resources;
+mod text_renderer;
 
-impl ParticleInstance {
-    fn layout() -> wgpu::VertexBufferLayout<'static> {
-        const ATTRIBUTES: [wgpu::VertexAttribute; 2] =
-            wgpu::vertex_attr_array![2 => Float32x2,3 => Float32x4];
-
-        wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<ParticleInstance>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &ATTRIBUTES,
-        }
-    }
-    fn from_position_color(position: [f32; 2], color: [f32; 4]) -> Self {
-        Self { position, color }
-    }
-}
-
-// ============================================================
-// RENDER OBJECT
-// ============================================================
-
-pub struct RenderObject {
-    pub uniform_buffer: wgpu::Buffer,
-    pub uniform_bind_group: wgpu::BindGroup,
-    pub sprite_bind_group: wgpu::BindGroup,
-    pub vertex_buffer: wgpu::Buffer,
-    pub vertex_count: u32,
-    pub transform_revision: u64,
-}
+pub use self::particle_renderer::ParticleInstance;
 
 // ============================================================
 // TEXT OBJECT
@@ -60,6 +30,20 @@ pub struct TextObject {
     pub vertex_count: u32,
     pub revision: u64,
 }
+
+// ============================================================
+// RENDER OBJECT
+// ============================================================
+
+pub struct RenderObject {
+    pub uniform_buffer: wgpu::Buffer,
+    pub uniform_bind_group: wgpu::BindGroup,
+    pub sprite_bind_group: wgpu::BindGroup,
+    pub vertex_buffer: wgpu::Buffer,
+    pub vertex_count: u32,
+    pub transform_revision: u64,
+}
+
 
 // ============================================================
 // RENDERER
@@ -88,6 +72,7 @@ pub struct Renderer {
     pub particle_instance_buffer: wgpu::Buffer,
     particle_instance_capacity: usize,
     particle_uniform_buffer: wgpu::Buffer,
+    particle_size_factor: f32,
     particle_uniform_bind_group: wgpu::BindGroup,
     particle_bind_group: Option<wgpu::BindGroup>,
     pub text_sampler: wgpu::Sampler,
@@ -103,7 +88,6 @@ pub struct Renderer {
     pub text_objects: HashMap<u32, TextObject>,
     last_camera: CameraUniforms,
 }
-
 impl Renderer {
     pub fn new(window: Arc<Window>) -> Self {
         let instance = wgpu::Instance::default();
@@ -193,7 +177,7 @@ impl Renderer {
                 ],
             });
 
-        let shader_source = include_str!("shader.wgsl");
+        let shader_source = include_str!("../shader.wgsl");
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("East Engine Shader"),
@@ -273,7 +257,7 @@ impl Renderer {
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
-                entry_point: Some("fs_main"),
+                entry_point: Some("fs_particle"),
                 compilation_options: wgpu::PipelineCompilationOptions::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
@@ -315,9 +299,9 @@ impl Renderer {
             mapped_at_creation: false,
         });
 
-        // Match the current particle sprite size (0.01 x 0.01 world units).
-        // Each instance supplies only its center position.
-        let particle_vertices = Self::quad_vertices(0.0015, 0.0015);
+        // Large carrier quad for the shader-generated glow/trail. The vertex
+        // shader contracts it to the analytic streak dimensions before rasterizing.
+        let particle_vertices = Self::quad_vertices(0.02, 0.02);
         let particle_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Shared Particle Vertex Buffer"),
             contents: bytemuck::cast_slice(&particle_vertices),
@@ -370,6 +354,7 @@ impl Renderer {
             particle_instance_buffer,
             particle_instance_capacity: PARTICLE_BUFFER_CAPACITY,
             particle_uniform_buffer,
+            particle_size_factor: 1.0,
             particle_uniform_bind_group,
             particle_bind_group: None,
             text_sampler,
@@ -379,7 +364,6 @@ impl Renderer {
             last_camera: camera_uniforms,
         }
     }
-
     pub fn set_size(&mut self, width: u32, height: u32) {
         if width == 0 || height == 0 {
             return;
@@ -400,7 +384,6 @@ impl Renderer {
         self.surface.configure(&self.device, &self.config);
         self.resize_pending = false;
     }
-
     pub fn create_render_object(&mut self, entity: &Entity) {
         if let Some(sprite) = &entity.sprite {
             let uniforms = Uniforms {
@@ -450,74 +433,29 @@ impl Renderer {
             });
         }
     }
-
     pub fn initialize_particle_resources(&mut self, sprite: &Sprite) {
         self.particle_bind_group = Some(self.create_sprite_bind_group(sprite));
     }
-
-    fn create_sprite_bind_group(&self, sprite: &Sprite) -> wgpu::BindGroup {
-        self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Sprite Bind Group"),
-            layout: &self.texture_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&sprite.texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&sprite.texture.sampler),
-                },
-            ],
-        })
+    pub fn set_particle_size(&mut self, size: f32) {
+        let size_factor = size.clamp(0.0005, 0.01) / 0.0015;
+        self.particle_size_factor = size_factor;
+        let uniforms = Uniforms {
+            position_rotation: [0.0; 4],
+            scale: [size_factor, size_factor, 1.0, 1.0],
+            color: [1.0; 4],
+        };
+        self.queue.write_buffer(&self.particle_uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
     }
 
-    fn create_sprite_vertex_buffer(&self, sprite: &Sprite) -> (wgpu::Buffer, u32) {
-        let half_width = sprite.size[0] / 2.0;
-        let half_height = sprite.size[1] / 2.0;
-
-        let vertices = Self::quad_vertices(half_width, half_height);
-
-        let vertex_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Sprite Vertex Buffer"),
-                contents: bytemuck::cast_slice(&vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-
-        (vertex_buffer, vertices.len() as u32)
+    /// Enable or disable the analytic glow and velocity-aligned trail independently.
+    pub fn set_particle_effects(&mut self, glow_enabled: bool, trails_enabled: bool) {
+        let uniforms = Uniforms {
+            position_rotation: [0.0; 4],
+            scale: [self.particle_size_factor, self.particle_size_factor, if glow_enabled { 1.0 } else { 0.0 }, if trails_enabled { 1.0 } else { 0.0 }],
+            color: [1.0; 4],
+        };
+        self.queue.write_buffer(&self.particle_uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
     }
-
-    fn quad_vertices(half_width: f32, half_height: f32) -> [Vertex; 6] {
-        [
-            Vertex {
-                position: [-half_width, half_height],
-                tex_coords: [0.0, 0.0],
-            },
-            Vertex {
-                position: [half_width, half_height],
-                tex_coords: [1.0, 0.0],
-            },
-            Vertex {
-                position: [-half_width, -half_height],
-                tex_coords: [0.0, 1.0],
-            },
-            Vertex {
-                position: [half_width, half_height],
-                tex_coords: [1.0, 0.0],
-            },
-            Vertex {
-                position: [half_width, -half_height],
-                tex_coords: [1.0, 1.0],
-            },
-            Vertex {
-                position: [-half_width, -half_height],
-                tex_coords: [0.0, 1.0],
-            },
-        ]
-    }
-
     pub fn render(&mut self, state: &GameState, fps_text: &Text, frame_time_text: &Text) {
         if self.config.width == 0 || self.config.height == 0 {
             return;
@@ -531,7 +469,7 @@ impl Renderer {
             .particles
             .iter()
             .map(|particle| {
-                ParticleInstance::from_position_color(particle.position, particle.color)
+                ParticleInstance::from_position_color(particle.position, particle.color, particle.velocity)
             })
             .collect();
 
@@ -702,228 +640,4 @@ impl Renderer {
         self.queue.present(output);
     }
 
-    pub fn create_text_object(&mut self, id: u32, text: Text) {
-        let font = load_font();
-
-        let (rgba_data, text_width, text_height) = create_text_bitmap_with_options(
-            font,
-            &text.content,
-            text.font_size,
-            text.line_spacing,
-            text.letter_spacing,
-            text.max_width,
-            text.alignment,
-        );
-
-        let text_texture = self.create_text_texture(&rgba_data, text_width, text_height);
-        let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-        let text_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Text Bind Group"),
-            layout: &self.texture_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&text_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&self.text_sampler),
-                },
-            ],
-        });
-
-        let (vertex_buffer, vertex_count) = self.create_text_vertex_buffer(text_width, text_height);
-
-        let uniforms = Self::text_uniforms(&text);
-
-        let uniform_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Text Uniform Buffer"),
-                contents: bytemuck::bytes_of(&uniforms),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
-
-        let uniform_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Text Uniform Bind Group"),
-            layout: &self.uniform_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.camera_uniform_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        self.text_objects.insert(
-            id,
-            TextObject {
-                revision: text.revision(),
-                text,
-                uniform_buffer,
-                uniform_bind_group,
-                text_texture,
-                text_bind_group,
-                vertex_buffer,
-                vertex_count,
-            },
-        );
-    }
-
-    fn create_text_texture(
-        &self,
-        rgba_data: &[u8],
-        text_width: u32,
-        text_height: u32,
-    ) -> wgpu::Texture {
-        let unpadded_bytes_per_row = text_width * 4;
-
-        let padded_bytes_per_row = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT
-            * unpadded_bytes_per_row.div_ceil(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
-
-        let mut padded_data = vec![0u8; (padded_bytes_per_row * text_height) as usize];
-
-        for y in 0..text_height {
-            let source_start = (y * unpadded_bytes_per_row) as usize;
-            let source_end = source_start + unpadded_bytes_per_row as usize;
-            let destination_start = (y * padded_bytes_per_row) as usize;
-            let destination_end = destination_start + unpadded_bytes_per_row as usize;
-
-            padded_data[destination_start..destination_end]
-                .copy_from_slice(&rgba_data[source_start..source_end]);
-        }
-
-        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("Text Texture"),
-            size: wgpu::Extent3d {
-                width: text_width,
-                height: text_height,
-                depth_or_array_layers: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            view_formats: &[],
-        });
-
-        self.queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture: &texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            &padded_data,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(padded_bytes_per_row),
-                rows_per_image: Some(text_height),
-            },
-            wgpu::Extent3d {
-                width: text_width,
-                height: text_height,
-                depth_or_array_layers: 1,
-            },
-        );
-
-        texture
-    }
-
-    fn create_text_vertex_buffer(&self, text_width: u32, text_height: u32) -> (wgpu::Buffer, u32) {
-        let screen_width = self.config.width.max(1) as f32;
-        let screen_height = self.config.height.max(1) as f32;
-
-        let text_width_ndc = (text_width as f32 / screen_width) * 2.0;
-        let text_height_ndc = (text_height as f32 / screen_height) * 2.0;
-
-        let half_width = text_width_ndc / 2.0;
-        let half_height = text_height_ndc / 2.0;
-
-        let vertices = Self::quad_vertices(half_width, half_height);
-
-        let vertex_buffer = self
-            .device
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Text Vertex Buffer"),
-                contents: bytemuck::cast_slice(&vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-
-        (vertex_buffer, vertices.len() as u32)
-    }
-
-    fn text_uniforms(text: &Text) -> Uniforms {
-        Uniforms {
-            position_rotation: [text.position[0], text.position[1], text.rotation, 0.0],
-            scale: [text.scale[0], text.scale[1], 0.0, 0.0],
-            color: [text.color[0], text.color[1], text.color[2], text.opacity],
-        }
-    }
-
-    pub fn update_text_object(&mut self, id: u32, text: &Text) {
-        let needs_bitmap_update = self
-            .text_objects
-            .get(&id)
-            .map(|object| object.revision != text.revision())
-            .unwrap_or(true);
-
-        if needs_bitmap_update {
-            let font = load_font();
-
-            let (rgba_data, text_width, text_height) = create_text_bitmap_with_options(
-                font,
-                &text.content,
-                text.font_size,
-                text.line_spacing,
-                text.letter_spacing,
-                text.max_width,
-                text.alignment,
-            );
-
-            let text_texture = self.create_text_texture(&rgba_data, text_width, text_height);
-            let text_view = text_texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-            let text_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("Text Bind Group"),
-                layout: &self.texture_bind_group_layout,
-                entries: &[
-                    wgpu::BindGroupEntry {
-                        binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&text_view),
-                    },
-                    wgpu::BindGroupEntry {
-                        binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&self.text_sampler),
-                    },
-                ],
-            });
-
-            let (vertex_buffer, vertex_count) =
-                self.create_text_vertex_buffer(text_width, text_height);
-
-            if let Some(object) = self.text_objects.get_mut(&id) {
-                object.text_texture = text_texture;
-                object.text_bind_group = text_bind_group;
-                object.vertex_buffer = vertex_buffer;
-                object.vertex_count = vertex_count;
-                object.revision = text.revision();
-            }
-        }
-
-        if let Some(object) = self.text_objects.get_mut(&id) {
-            let uniforms = Self::text_uniforms(text);
-
-            self.queue
-                .write_buffer(&object.uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
-
-            object.text = text.clone();
-        }
-    }
 }
