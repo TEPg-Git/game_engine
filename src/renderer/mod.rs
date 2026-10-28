@@ -72,6 +72,7 @@ pub struct Renderer {
     pub particle_instance_buffer: wgpu::Buffer,
     particle_instance_capacity: usize,
     particle_uniform_buffer: wgpu::Buffer,
+    particle_size_factor: f32,
     particle_uniform_bind_group: wgpu::BindGroup,
     particle_bind_group: Option<wgpu::BindGroup>,
     pub text_sampler: wgpu::Sampler,
@@ -353,6 +354,7 @@ impl Renderer {
             particle_instance_buffer,
             particle_instance_capacity: PARTICLE_BUFFER_CAPACITY,
             particle_uniform_buffer,
+            particle_size_factor: 1.0,
             particle_uniform_bind_group,
             particle_bind_group: None,
             text_sampler,
@@ -436,6 +438,7 @@ impl Renderer {
     }
     pub fn set_particle_size(&mut self, size: f32) {
         let size_factor = size.clamp(0.0005, 0.01) / 0.0015;
+        self.particle_size_factor = size_factor;
         let uniforms = Uniforms {
             position_rotation: [0.0; 4],
             scale: [size_factor, size_factor, 1.0, 1.0],
@@ -446,11 +449,9 @@ impl Renderer {
 
     /// Enable or disable the analytic glow and velocity-aligned trail independently.
     pub fn set_particle_effects(&mut self, glow_enabled: bool, trails_enabled: bool) {
-        let current_size = 1.0; // Replaced below by the currently stored size uniform.
-        let _ = current_size;
         let uniforms = Uniforms {
             position_rotation: [0.0; 4],
-            scale: [1.0, 1.0, if glow_enabled { 1.0 } else { 0.0 }, if trails_enabled { 1.0 } else { 0.0 }],
+            scale: [self.particle_size_factor, self.particle_size_factor, if glow_enabled { 1.0 } else { 0.0 }, if trails_enabled { 1.0 } else { 0.0 }],
             color: [1.0; 4],
         };
         self.queue.write_buffer(&self.particle_uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
