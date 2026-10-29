@@ -7,15 +7,51 @@ pub struct Particle {
     pub velocity: [f32; 2],
     pub color: [f32; 4],
     pub lifetime: f32,
+    //pub size:f32,
 }
 
+// pub struct Attractor_Particle {
+// pub position: [f32; 2],
+// pub size: [f32; 2],
+// pub lifetime: f32,
+// pub influence: f32,
+// pub visibility: bool,
+// }
+
+//pub struct Color {
+// pub R
+// pub G
+// pub B
+// pub alpha
+//
+// let stops: [[f32; 4]; 4] = [
+//   [0.00, 0.05, 0.25, 0.15],
+//   [0.00, 0.30, 0.75, 0.45],
+//   [0.00, 0.85, 0.90, 0.75],
+//   [0.70, 1.00, 0.95, 1.00],
+//];
+//
+// let stops: [[f32; 4]; 4] = [
+//    [0.02, 0.10, 1.00, 0.15],
+//    [0.00, 0.90, 0.75, 0.50],
+//    [0.30, 1.00, 0.35, 0.80],
+//    [0.90, 1.00, 0.65, 1.00],
+//];
+//
+//     let stops: [[f32; 4]; 4] = [
+//        [0.10, 0.20, 1.00, 0.15],
+//        [0.00, 0.90, 1.00, 0.50],
+//        [0.75, 0.20, 1.00, 0.80],
+//        [1.00, 0.75, 0.15, 1.00],
+// }
+
 fn smooth_color_gradient(t: f32) -> [f32; 4] {
-    // Deep blue -> cyan -> violet -> gold.
+    // Deep blue (slow) -> electric blue -> violet -> red (fast).
     let stops: [[f32; 4]; 4] = [
-        [0.10, 0.20, 1.00, 0.25],
-        [0.00, 0.90, 1.00, 0.60],
-        [0.75, 0.20, 1.00, 0.80],
-        [1.00, 0.75, 0.15, 1.00],
+        [0.02, 0.05, 0.45, 0.20], // Slow: deep blue
+        [0.00, 0.30, 1.00, 0.45], // Medium-slow: electric blue
+        [0.45, 0.05, 0.85, 0.75], // Medium-fast: violet
+        [1.00, 0.02, 0.05, 1.00], // Fast: vivid red
     ];
 
     let scaled_t = t.clamp(0.0, 1.0) * 3.0;
@@ -41,6 +77,8 @@ impl Particle {
             velocity,
             color,
             lifetime,
+            //Size (speed based)
+            //
         }
     }
 
@@ -115,10 +153,16 @@ pub struct ParticleSystem {
 }
 
 impl ParticleSystem {
-    pub fn new() -> Self { Self::from_settings(&crate::settings::ParticleSettings::default()) }
+    pub fn new() -> Self {
+        Self::from_settings(&crate::settings::ParticleSettings::default())
+    }
     pub fn from_settings(settings: &crate::settings::ParticleSettings) -> Self {
-        let mut rng = rand::rng(); let mut settings=settings.clone(); settings.clamp(); let field_scale=settings.field_scale;
-        Self { particles: (0..settings.particle_count)
+        let mut rng = rand::rng();
+        let mut settings = settings.clone();
+        settings.clamp();
+        let field_scale = settings.field_scale;
+        Self {
+            particles: (0..settings.particle_count)
                 .map(|_| {
                     Particle::new(
                         [rng.random_range(-0.5..=0.5), rng.random_range(-0.5..=0.5)],
@@ -128,15 +172,51 @@ impl ParticleSystem {
                     )
                 })
                 .collect(),
-            flow_field: FlowField::new(settings.field_resolution,settings.field_resolution,field_scale,9678498), flow_speed:settings.flow_speed,flow_steering:settings.flow_steering,elapsed_time:0.0,field_update_interval:settings.field_update_interval,
+            flow_field: FlowField::new(
+                settings.field_resolution,
+                settings.field_resolution,
+                field_scale,
+                9678498,
+            ),
+            flow_speed: settings.flow_speed,
+            flow_steering: settings.flow_steering,
+            elapsed_time: 0.0,
+            field_update_interval: settings.field_update_interval,
             field_update_accumulator: 0.0,
             field_scale,
         }
     }
     pub fn apply_settings(&mut self, settings: &crate::settings::ParticleSettings) {
-        let mut s=settings.clone();s.clamp();let target=s.particle_count;
-        if target<self.particles.len(){self.particles.truncate(target)}else if target>self.particles.len(){let mut rng=rand::rng();self.particles.reserve(target-self.particles.len());while self.particles.len()<target{self.particles.push(Particle::new([rng.random_range(-0.5..=0.5),rng.random_range(-0.5..=0.5)],[0.0,0.0],[1.0,1.0,1.0,1.0],rng.random_range(2.0..=10.0)));}}
-        self.flow_speed=s.flow_speed;self.flow_steering=s.flow_steering;self.field_update_interval=s.field_update_interval;self.field_scale=s.field_scale;self.flow_field=FlowField::new(s.field_resolution,s.field_resolution,s.field_scale,9678498);self.field_update_accumulator=0.0;self.flow_field.generate_at_time(self.field_scale,self.elapsed_time);
+        let mut s = settings.clone();
+        s.clamp();
+        let target = s.particle_count;
+        if target < self.particles.len() {
+            self.particles.truncate(target)
+        } else if target > self.particles.len() {
+            let mut rng = rand::rng();
+            self.particles.reserve(target - self.particles.len());
+            while self.particles.len() < target {
+                self.particles.push(Particle::new(
+                    [rng.random_range(-0.5..=0.5), rng.random_range(-0.5..=0.5)],
+                    [0.0, 0.0],
+                    [1.0, 1.0, 1.0, 1.0],
+                    rng.random_range(2.0..=10.0),
+                ));
+            }
+        }
+        self.flow_speed = s.flow_speed;
+        self.flow_steering = s.flow_steering;
+        self.field_update_interval = s.field_update_interval;
+        self.field_scale = s.field_scale;
+        self.flow_field = FlowField::new(
+            s.field_resolution,
+            s.field_resolution,
+            s.field_scale,
+            9678498,
+        );
+        self.field_update_accumulator = 0.0;
+        self.flow_field
+            .generate_at_time(self.field_scale, self.elapsed_time);
     }
     pub fn update(&mut self, dt: f32) {
         let dt = dt.max(0.0);
