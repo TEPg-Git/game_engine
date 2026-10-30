@@ -523,20 +523,35 @@ Planned 3D systems include:
 The engine is organized into separate modules so that rendering, input, state, application logic, and engine systems remain independent.
 
 ```text
-src/
-├── main.rs
-├── app.rs
-├── camera.rs
-├── entity.rs
-├── renderer.rs
-├── graphics.rs
-├── state.rs
-├── input/
-│   └── mod.rs
-├── text.rs
-├── texture.rs
-├── time.rs
-├── sprite.rs
-├── transform.rs
-└── shader.wgsl
+game_engine/
+├── assets/
+│   ├── fonts/
+│   ├── logo/
+│   └── textures/
+├── src/
+│   ├── main.rs
+│   ├── app.rs
+│   ├── camera.rs
+│   ├── diagnostics.rs
+│   ├── entity.rs
+│   ├── flow_field.rs
+│   ├── graphics.rs
+│   ├── particle.rs
+│   ├── settings.rs
+│   ├── sprite.rs
+│   ├── state.rs
+│   ├── text.rs
+│   ├── texture.rs
+│   ├── time.rs
+│   ├── transform.rs
+│   ├── shader.wgsl
+│   ├── input/
+│   │   └── mod.rs
+│   └── renderer/
+│       ├── mod.rs
+│       ├── particle_renderer.rs
+│       ├── resources.rs
+│       └── text_renderer.rs
+├── Cargo.toml
+└── README.md
 ```
