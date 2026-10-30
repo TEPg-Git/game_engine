@@ -30,13 +30,7 @@ This allows each system to be implemented and understood individually, from low-
 
 The current priority is to complete the **2D engine foundation** before beginning 3D rendering.
 
-The repository uses the following branch workflow:
-
-* `master` — stable completed Pong milestone
-* `pong-game` — Pong development history
-* `optimizations` — engine optimization and cleanup work
-* `visualization-demo` — October Particle Flow Field visualization development
-* `dynamic-flow-field` — dynamic and organic flow-field experiments
+The `master` branch contains the stable engine and the completed October 2026 Particle Flow Field development. Feature work is developed on separate branches and merged after validation.
 
 ---
 
@@ -135,6 +129,25 @@ A dedicated asset/resource manager is planned to centralize loading, caching, an
 
 ---
 
+## 🌊 Particle Simulation and Visualization
+
+The October milestone adds a real-time particle simulation built around a procedurally generated, time-varying 2D vector field.
+
+* Configurable particle count, up to 1,000,000 particles
+* Delta-time based particle movement and lifetime
+* Procedural vector-field generation with deterministic seeded patterns
+* Smoothly evolving flow-field directions
+* Bilinear vector-field sampling
+* Particle steering toward sampled field directions
+* Automatic particle respawning at boundaries or end of life
+* Velocity-dependent color gradients (deep blue through violet to red)
+* GPU instanced particle rendering
+* Optional particle glow and directional trails
+* Runtime-adjustable simulation settings
+* FPS and frame-time diagnostics
+
+The simulation uses Rayon to parallelize CPU particle updates. GPU rendering uses instancing so particle data is submitted in batches rather than issuing a separate draw call for every particle.
+
 # 🧩 Engine Architecture
 
 East Engine is organized into independent modules.
@@ -153,6 +166,9 @@ Current systems include:
 * Sprite system
 * Transform system
 * Shader system
+* Particle simulation and flow-field systems
+* Runtime particle settings
+* Performance diagnostics
 
 The architecture is being developed incrementally so that individual engine systems remain understandable and reusable.
 
@@ -268,69 +284,58 @@ The current entity system is intentionally simple and will be expanded as more e
 
 ---
 
-# 🌊 October Visualization Demo
+# 🌊 October 2026 — Particle Flow Field Demo
 
-The main development goal for **October 2026** is to build and release a real-time **Particle Flow Field** visualization.
+The October development milestone delivered a real-time **Particle Flow Field** visualization. It demonstrates East Engine's use as both a 2D rendering engine and a foundation for real-time simulations.
 
-The demo will use particles moving through a procedurally generated vector field. The project is intended to demonstrate East Engine's ability to support continuous simulations and large numbers of moving visual elements.
+Particles move through a procedurally generated vector field whose directions evolve over time. The demo combines CPU-side simulation, parallel particle updates, GPU instanced rendering, and runtime controls.
 
-### Core Demo Goals
+## Implemented Features
 
-* [x] Particle data structure
-* [x] Particle spawning
-* [x] Particle position and velocity
-* [x] Delta-time based movement
-* [x] Boundary handling
-* [x] Flow-field generation
-* [x] Particle movement through the flow field
-* [x] Particle lifetime and respawning
-* [x] Visual variation between particles
-* [x] Velocity-based particle colors
-* [x] Instanced particle rendering for large particle counts
-* [ ] Dynamic, time-varying flow field
-* [ ] More organic flow patterns and vortices
-* [ ] Configurable simulation parameters
-* [ ] User interaction
-* [ ] Particle trails
-* [ ] Performance measurement
-* [ ] Final visual polish
-* [ ] Standalone release build
-* [ ] Documentation and screenshots
-* [ ] Release by October 31, 2026
+* [x] Particle data structure and spawning
+* [x] Delta-time based movement and lifetime
+* [x] Boundary detection and automatic respawning
+* [x] Procedural 2D vector-field generation
+* [x] Deterministic seeded field generation
+* [x] Time-varying, organic flow patterns
+* [x] Bilinear vector-field sampling
+* [x] Particle steering and configurable flow speed
+* [x] Velocity-based particle color gradients
+* [x] Runtime particle count adjustment (1,000–1,000,000)
+* [x] Runtime flow speed and steering adjustment
+* [x] Runtime field scale and grid-resolution adjustment
+* [x] Runtime particle-size and field-update-interval adjustment
+* [x] Rayon-based parallel CPU particle updates
+* [x] GPU instanced particle rendering
+* [x] Optional particle glow
+* [x] Optional directional particle trails
+* [x] FPS and frame-time display with a shared visibility toggle
+* [x] In-app settings overlay
+* [x] Reset to default simulation settings
 
-### Planned Development Phases
+## Controls
 
-**October 1–4 — Foundation**
+| Input | Action |
+|---|---|
+| `F1` | Open or close the particle settings panel |
+| `Tab` | Select the next setting |
+| `Left` / `Down` | Decrease a selected value or turn a toggle off |
+| `Right` / `Up` | Increase a selected value or turn a toggle on |
+| `R` | Reset particle settings to defaults |
+| `F` | Toggle fullscreen |
+| `Esc` | Exit the application |
 
-Build the initial particle representation, spawning, movement, delta-time integration, and screen boundaries.
+The settings panel exposes particle count, flow speed, steering, field scale, field resolution, particle size, field update interval, FPS display, glow, and trails. FPS and frame-time visibility are controlled together.
 
-**October 5–11 — Flow Field**
+## Performance and Rendering
 
-Implement the vector-field representation and make particles follow the field. The static procedural flow field and particle steering are now implemented.
+Particle updates are parallelized across CPU threads using Rayon. The renderer uses GPU instancing to draw large particle populations efficiently. The flow field is regenerated at a configurable interval rather than necessarily rebuilding the entire grid every frame.
 
-**October 12–18 — Visual System**
+A development benchmark reached approximately **40 FPS at 1,000,000 particles and 1080p** in release mode on an AMD system using Radeon 780M integrated graphics. This is a hardware- and configuration-specific development result, not a universal performance target.
 
-Add particle lifetime, respawning, velocity-based color variation, and instanced rendering. Dynamic flow-field motion and trails remain planned.
+## October Outcome
 
-**October 19–24 — Interaction**
-
-Add user controls and interactive parameters for changing the visualization while it is running.
-
-**October 25–27 — Stability and Performance**
-
-Clean up the implementation, measure frame time and rendering performance, and address issues revealed by the demo.
-
-**October 28–29 — Release Polish**
-
-Finalize presentation, controls, README documentation, screenshots, and demo media.
-
-**October 30 — Packaging**
-
-Create and test the standalone release build.
-
-**October 31 — Release**
-
-Publish the Particle Flow Field visualization demo.
+The planned October simulation features are implemented in the current codebase. The milestone established a reusable starting point for future simulation and visualization work. The next development phase shifts back toward general-purpose engine architecture, beginning with centralized asset/resource management.
 
 ---
 
@@ -360,9 +365,7 @@ The goal is to complete the following 2D systems before beginning 3D rendering.
 
 ## Optimization Work
 
-Optimization and cleanup work for the current engine stage has been completed.
-
-The following work has been implemented:
+Engine and simulation optimizations completed so far include:
 
 * [x] Cache the parsed font so it is loaded only once
 * [x] Reuse a shared text sampler instead of creating one for each text resource
@@ -370,8 +373,11 @@ The following work has been implemented:
 * [x] Update camera GPU data once per frame
 * [x] Reduce unnecessary work during text updates through revision tracking
 * [x] Protect game delta time from long resize pauses
+* [x] Parallelize particle updates with Rayon
+* [x] Render particles through GPU instancing
+* [x] Control flow-field regeneration frequency
 
-Further optimization work will be driven by the needs of the visualization demo rather than treated as a separate project phase.
+The October particle benchmark and subsequent optimization work provide a baseline for further CPU- and GPU-side profiling.
 
 ---
 
@@ -428,15 +434,12 @@ Further optimization work will be driven by the needs of the visualization demo 
 
 ## Particles
 
-* [ ] Particle system
-* [ ] Particle emitters
-* [ ] Particle lifetime
-* [ ] Particle velocity
-* [ ] Particle scaling
-* [ ] Particle color
-* [ ] Particle effects
+The October demo contains a working particle simulation and rendering path. The following items describe future work toward a generalized, reusable particle system:
 
-The October Particle Flow Field demo is expected to become the first practical implementation of these particle concepts.
+* [ ] General-purpose particle emitter API
+* [ ] Reusable particle configuration and effect definitions
+* [ ] Multiple emitter support
+* [ ] Generalized particle lifecycle and behavior modules
 
 ---
 
