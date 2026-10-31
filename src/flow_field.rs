@@ -65,8 +65,8 @@ impl FlowField {
 
                 // Several overlapping waves create a smoothly evolving,
                 // organic direction field without an extra noise dependency.
-                let wave_a = (sx * 2.0 + offset_x + time_x).sin()
-                    * (sy * 1.5 + offset_y - time_y).cos();
+                let wave_a =
+                    (sx * 2.0 + offset_x + time_x).sin() * (sy * 1.5 + offset_y - time_y).cos();
                 let wave_b = ((sx + sy) * 0.8 + offset_x * 0.5 + time_mix).sin() * 0.5;
                 let wave_c = ((sx - sy) * 0.65 + offset_y * 0.75 - time_x * 0.6).cos() * 0.35;
                 let angle = (wave_a + wave_b + wave_c) * TAU;

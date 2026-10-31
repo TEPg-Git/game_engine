@@ -1,3 +1,33 @@
-use crate::camera::Camera; use crate::entity::Entity; use crate::particle::ParticleSystem; use crate::settings::ParticleSettings; use crate::text::Text;
-pub struct GameState { pub camera:Camera,pub entities:Vec<Entity>,pub text:Text,pub score_text:Text,pub particle_system:ParticleSystem,pub particle_settings:ParticleSettings }
-impl GameState { pub fn new()->Self{let particle_settings=ParticleSettings::default();Self{camera:Camera::new(),entities:Vec::new(),text:Text::new("",16.0),score_text:Text::new("",16.0),particle_system:ParticleSystem::from_settings(&particle_settings),particle_settings}} pub fn update(&mut self,dt:f32){self.particle_system.update(dt)} pub fn apply_particle_settings(&mut self){self.particle_settings.clamp();self.particle_system.apply_settings(&self.particle_settings)} }
+use crate::camera::Camera;
+use crate::entity::Entity;
+use crate::particle::ParticleSystem;
+use crate::settings::ParticleSettings;
+use crate::text::Text;
+pub struct GameState {
+    pub camera: Camera,
+    pub entities: Vec<Entity>,
+    pub text: Text,
+    pub score_text: Text,
+    pub particle_system: ParticleSystem,
+    pub particle_settings: ParticleSettings,
+}
+impl GameState {
+    pub fn new() -> Self {
+        let particle_settings = ParticleSettings::default();
+        Self {
+            camera: Camera::new(),
+            entities: Vec::new(),
+            text: Text::new("", 16.0),
+            score_text: Text::new("", 16.0),
+            particle_system: ParticleSystem::from_settings(&particle_settings),
+            particle_settings,
+        }
+    }
+    pub fn update(&mut self, dt: f32) {
+        self.particle_system.update(dt)
+    }
+    pub fn apply_particle_settings(&mut self) {
+        self.particle_settings.clamp();
+        self.particle_system.apply_settings(&self.particle_settings)
+    }
+}

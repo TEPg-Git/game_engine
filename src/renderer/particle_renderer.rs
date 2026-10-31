@@ -23,6 +23,10 @@ impl ParticleInstance {
         color: [f32; 4],
         velocity: [f32; 2],
     ) -> Self {
-        Self { position, color, velocity }
+        Self {
+            position,
+            color,
+            velocity,
+        }
     }
 }

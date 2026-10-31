@@ -44,7 +44,6 @@ pub struct RenderObject {
     pub transform_revision: u64,
 }
 
-
 // ============================================================
 // RENDERER
 // ============================================================
@@ -444,17 +443,30 @@ impl Renderer {
             scale: [size_factor, size_factor, 1.0, 1.0],
             color: [1.0; 4],
         };
-        self.queue.write_buffer(&self.particle_uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
+        self.queue.write_buffer(
+            &self.particle_uniform_buffer,
+            0,
+            bytemuck::bytes_of(&uniforms),
+        );
     }
 
     /// Enable or disable the analytic glow and velocity-aligned trail independently.
     pub fn set_particle_effects(&mut self, glow_enabled: bool, trails_enabled: bool) {
         let uniforms = Uniforms {
             position_rotation: [0.0; 4],
-            scale: [self.particle_size_factor, self.particle_size_factor, if glow_enabled { 1.0 } else { 0.0 }, if trails_enabled { 1.0 } else { 0.0 }],
+            scale: [
+                self.particle_size_factor,
+                self.particle_size_factor,
+                if glow_enabled { 1.0 } else { 0.0 },
+                if trails_enabled { 1.0 } else { 0.0 },
+            ],
             color: [1.0; 4],
         };
-        self.queue.write_buffer(&self.particle_uniform_buffer, 0, bytemuck::bytes_of(&uniforms));
+        self.queue.write_buffer(
+            &self.particle_uniform_buffer,
+            0,
+            bytemuck::bytes_of(&uniforms),
+        );
     }
     pub fn render(&mut self, state: &GameState, fps_text: &Text, frame_time_text: &Text) {
         if self.config.width == 0 || self.config.height == 0 {
@@ -469,7 +481,11 @@ impl Renderer {
             .particles
             .iter()
             .map(|particle| {
-                ParticleInstance::from_position_color(particle.position, particle.color, particle.velocity)
+                ParticleInstance::from_position_color(
+                    particle.position,
+                    particle.color,
+                    particle.velocity,
+                )
             })
             .collect();
 
@@ -639,5 +655,4 @@ impl Renderer {
         self.queue.submit(Some(encoder.finish()));
         self.queue.present(output);
     }
-
 }
